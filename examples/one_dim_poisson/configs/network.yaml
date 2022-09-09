@@ -1,0 +1,6 @@
+MLP1DPOISSON:
+  in_dim: 1
+  out_dim: 1
+  hid_dim: 10
+  num_hid_layer: 3
+  act_type: tanh
