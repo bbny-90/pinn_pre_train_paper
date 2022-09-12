@@ -1,15 +1,9 @@
 import os
-import sys
 import pathlib
 pjoin = os.path.join
 SCRIPT_DIR = os.path.abspath(pathlib.Path(__file__).parent.absolute())
 
-import yaml
 import pandas as pd
-import torch
-from models.nueral_net_pt import MLP
-from trainer.poisson.pinn_one_dim import train_vanilla
-from helper.other import get_torch_device
 from examples.one_dim_poisson.problem_setup import get_true_solution
 
 
@@ -36,6 +30,27 @@ def plot_solution(case:str):
         )
         plt.plot(data.x, data.u, label=f'trial {i+1}', color='b', alpha=transp[i+1])
     plt.plot(data.x, get_true_solution(data.x.values), label='exact', color='r', linestyle='--')
+    if case == "zero_pinn":
+        aux_data = pd.read_csv(
+            pjoin(SCRIPT_DIR, f"data/zero_solution_Nx10.csv")
+        )
+        plt.title("guided by zeros")
+    elif case == "noisy_fem_pinn":
+        aux_data = pd.read_csv(
+            pjoin(SCRIPT_DIR, f"data/noisy_fem_solution_Nx10.csv")
+        )
+        plt.title("guided by coarse noisy FEM")
+    elif case == "fem_pinn":
+        aux_data = pd.read_csv(
+            pjoin(SCRIPT_DIR, f"data/coarse_fem_solution_Nx10.csv")
+        )
+        plt.title("guided by coarse FEM")
+    else:
+        plt.title("without guidance")
+        aux_data = None
+    
+    if aux_data is not None:
+        plt.plot(aux_data.x, aux_data.u, label='auxiliary data', color='k', marker = 'x', linestyle='none')
     plt.xlabel('x')
     plt.ylabel('u')
     # plt.legend()
@@ -47,7 +62,7 @@ def plot_solution(case:str):
     plt.show()
 
 if __name__ == "__main__":
-    # plot_solution("vanilla_pinn")
-    # plot_solution("fem_pinn")
-    # plot_solution("noisy_fem_pinn")
+    plot_solution("vanilla_pinn")
+    plot_solution("fem_pinn")
+    plot_solution("noisy_fem_pinn")
     plot_solution("zero_pinn")
