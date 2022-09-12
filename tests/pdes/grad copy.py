@@ -1,7 +1,6 @@
 import inspect
 
 def test_first_grad_scalar():
-    from pdes.operators import get_laplace_scalar
     from pdes.operators import get_grad_scalar
     from helper.other import get_torch_device
     import torch
