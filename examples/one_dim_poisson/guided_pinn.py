@@ -13,13 +13,13 @@ from helper.other import get_torch_device
 
 
 NETWORK_NAME = "MLP1DPOISSON"
-TRAIN_NAME = "MLP1DPOISSON"
+TRAIN_NAME = "MLP1DPOISSONGUIDED"
 LOSS_WEIGHTS = {"pde":1., "bc":1., "guide":1.}
 problem_data_dir = pjoin(SCRIPT_DIR, "data/")
 
 def read_and_train(guide_case: str, random_seed = None):
     if random_seed is not None:
-        torch.manual_seed(random_seed)
+        torch.manual_seed(int(random_seed))
     else:
         random_seed = "rand"
     out_dir = pjoin(SCRIPT_DIR, f".tmp/{guide_case}_pinn/")

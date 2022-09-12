@@ -27,7 +27,7 @@ rc('lines', linewidth=2,markersize=10)
 plt.rcParams["figure.figsize"] = (8,5)
 
 
-def plot_solutiom(case:str):
+def plot_solution(case:str):
     out_dir = pjoin(SCRIPT_DIR, f".tmp/{case}/")
     transp = np.linspace(0., 1., int(num_seeds*1.5))
     for i in range(num_seeds):
@@ -47,4 +47,7 @@ def plot_solutiom(case:str):
     plt.show()
 
 if __name__ == "__main__":
-    plot_solutiom("vanilla_pinn")
+    # plot_solution("vanilla_pinn")
+    # plot_solution("fem_pinn")
+    # plot_solution("noisy_fem_pinn")
+    plot_solution("zero_pinn")

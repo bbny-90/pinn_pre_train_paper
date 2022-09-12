@@ -63,6 +63,27 @@ def train_vanilla(
         loss_rec['lr'].append(optimizer.param_groups[0]['lr'])
     return loss_rec
 
+class AuxilaryTaskScheduler():
+    def __init__(self, params: dict) -> None:
+        self.method = params["method"]
+        if self.method == "stepwise":
+            self.offset_epoch = params["offset_epoch"]
+            self.reduction_factor = params["reduction_factor"]
+            self.step_size = params["step_size"]
+        else:
+            raise NotImplementedError(self.method)
+    
+    def __call__(self, curent_penalty, epoch) -> float:
+        if self.method == "stepwise":
+            if epoch > self.offset_epoch and\
+               epoch % self.step_size == 0:
+                curent_penalty /= self.reduction_factor
+        else:
+            raise NotADirectoryError(self.method)
+        return curent_penalty
+        
+        
+
 def train_guided(
     solution:MLP,
     x_pde: np.ndarray, source_pde:np.ndarray,
@@ -79,6 +100,7 @@ def train_guided(
     lr_red_factoe = train_params['lr_red_factoe']
     epochs = train_params['epochs']
     lr_sch_epoch = train_params['lr_sch_epoch']
+    auxilary_task_params:dict = train_params['auxilary_task_params']
     weight_pde = loss_weights['pde']
     weight_bc = loss_weights['bc']
     weight_guide = loss_weights['guide']
@@ -96,7 +118,9 @@ def train_guided(
     u_guide_pt = torch.from_numpy(u_guide).float().to(device=device)
     #
     loss_rec = {'bc':[], 'pde':[], 'acc':[], 'lr':[], "guide":[]}
+    aux_scheduler = AuxilaryTaskScheduler(auxilary_task_params)
     for epoch in range(epochs):
+        weight_guide = aux_scheduler(curent_penalty=weight_guide, epoch=epoch)
         optimizer.zero_grad()
         x_pde_pt = torch.from_numpy(x_pde).float().requires_grad_(True).to(device=device)
         x_bc_pt = torch.from_numpy(x_bc).float().to(device=device)

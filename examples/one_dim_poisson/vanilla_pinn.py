@@ -15,7 +15,7 @@ from helper.other import get_torch_device
 NETWORK_NAME = "MLP1DPOISSON"
 TRAIN_NAME = "MLP1DPOISSON"
 LOSS_WEIGHTS = {"pde":1., "bc":1.}
-problem_data_dir = pjoin(SCRIPT_DIR, ".tmp/problem_data/")
+problem_data_dir = pjoin(SCRIPT_DIR, "data/")
 out_dir = pjoin(SCRIPT_DIR, ".tmp/vanilla_pinn/")
 
 def read_and_train(random_seed = None):
