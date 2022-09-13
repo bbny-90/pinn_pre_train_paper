@@ -14,9 +14,7 @@ def test_first_grad_scalar():
     class MLP():
         def __init__(self) -> None:
             self.layer1 = torch.nn.Linear(1, 10, bias=False)
-            print(self.layer1.weight.shape)
             self.layer2 = torch.nn.Linear(10, 1, bias=False)
-            print(self.layer2.weight.shape)
         
         def __call__(self, x) -> torch.tensor:
             y = self.layer1(x)
