@@ -2,7 +2,7 @@ import inspect
 
 def test_laplace_1d():
     import numpy as np
-    from sympy.abc import x, y
+    from sympy.abc import x
     from helper.symbolic_calculator import get_laplacian, EvalNp
     
     ndata, ndim = 10, 1
@@ -11,7 +11,7 @@ def test_laplace_1d():
 
     u = x**3 / 6.
     lap_u = get_laplacian(u, [x])
-    eval_np_lap_u = EvalNp([x], lap_u)
+    eval_np_lap_u = EvalNp([x], lap_u, 1)
     lap_u_symb_np = eval_np_lap_u(x_np)
     assert np.allclose(lap_u_true, lap_u_symb_np), (lap_u_true, lap_u_symb_np)
     print(f"{inspect.stack()[0][3]} is passed")
@@ -28,7 +28,7 @@ def test_laplace_3d():
 
     u = 0.5 * x**2 * y + 0.5 * y**2 * x
     lap_u = get_laplacian(u, [x, y])
-    eval_np_lap_u = EvalNp([x, y], lap_u)
+    eval_np_lap_u = EvalNp([x, y], lap_u, 1)
     lap_u_symb_np = eval_np_lap_u(x_np)
     assert np.allclose(lap_u_true, lap_u_symb_np)
     print(f"{inspect.stack()[0][3]} is passed")
