@@ -1,11 +1,11 @@
 from __future__ import annotations
-from turtle import pd
 from typing import Dict, List, Tuple
 import os
 import json
 import torch
 import numpy as np
 
+from models.activation import SiLU
 from helper.other import drop_file_type
 
 def get_remap_array(
@@ -51,6 +51,7 @@ def get_remap_layers(
     return remap_all
 
 
+
 class MLP(torch.nn.Module):
     def __init__(self, params: dict, nn_weights_path=str()) -> None:
         """
@@ -74,6 +75,8 @@ class MLP(torch.nn.Module):
             self.actFun = torch.nn.ReLU()
         elif self.act_type == "tanh":
             self.actFun = torch.nn.Tanh()
+        elif self.act_type == "silu":
+            self.actFun = SiLU()
         else:
             raise NotImplementedError(f"activation {self.act_type} is not supported")
 

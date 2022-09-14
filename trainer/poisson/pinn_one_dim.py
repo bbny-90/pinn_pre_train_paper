@@ -64,7 +64,72 @@ def train_vanilla(
         loss_rec['acc'].append(acc.item())
         loss_rec['lr'].append(optimizer.param_groups[0]['lr'])
     return loss_rec
-        
+
+def train_vanilla_mixed_form(
+    solution:MLP,
+    x_pde: np.ndarray, 
+    source_pde:np.ndarray,
+    x_bc:np.ndarray, 
+    u_bc:np.ndarray,
+    loss_weights:Dict[str, float],
+    train_params: dict,
+    device: torch.device,
+    u_true:Optional[np.ndarray] = None
+)-> Dict[str, list]:
+    lr = train_params['lr']
+    min_lr = train_params['min_lr']
+    lr_patience = train_params['lr_patience']
+    lr_red_factoe = train_params['lr_red_factoe']
+    epochs = train_params['epochs']
+    lr_sch_epoch = train_params['lr_sch_epoch']
+    weight_pde = loss_weights['pde']
+    weight_bc = loss_weights['bc']
+    weight_compat = loss_weights['compat']
+    #
+    optimizer = torch.optim.Adam(solution.parameters(), lr=lr)
+    lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( 
+            optimizer, mode='min', patience=lr_patience, factor=lr_red_factoe,
+            min_lr=min_lr, verbose=False
+    )
+    #
+
+    
+    u_bc_pt = torch.from_numpy(u_bc).float().to(device=device)
+    source_pde_pt = torch.from_numpy(source_pde).float().to(device=device)
+    #
+    loss_rec = {'bc':[], 'pde':[], 'compat':[], 'acc':[], 'lr':[]}
+    for epoch in range(epochs):
+        optimizer.zero_grad()
+        x_pde_pt = torch.from_numpy(x_pde).float().requires_grad_(True).to(device=device)
+        x_bc_pt = torch.from_numpy(x_bc).float().requires_grad_(True).to(device=device)
+        out = solution(x_pde_pt)
+        u_pde_pred, du_pde_pred = out[:, 0:1], out[:, 1:2]
+        u_bc_pred = solution(x_bc_pt)[:, 0:1]
+        du_dx_auto = get_grad_scalar(u_pde_pred, x_pde_pt, device)
+        ddu_dxx = get_grad_scalar(du_pde_pred, x_pde_pt, device)
+        pde_res = (ddu_dxx - source_pde_pt).pow(2).mean()
+        bc_res = (u_bc_pred - u_bc_pt).pow(2).mean()
+        compat_res = (du_dx_auto - du_pde_pred).pow(2).mean()
+        loss_tot = weight_pde * pde_res + weight_bc * bc_res + weight_compat * compat_res
+        loss_tot.backward()
+        optimizer.step()
+        if epoch > lr_sch_epoch:
+            lr_scheduler.step(loss_tot)
+        if u_true is not None:
+            with torch.no_grad():
+                acc = np.mean((u_pde_pred.detach().numpy() - u_true)**2)
+        else:
+            acc = -1.
+        print(f'epoch {epoch}:', f'loss_tot {loss_tot.item():.8f} ', 
+              f'pde_res {pde_res.item():.8f} bc_res {bc_res.item():.8f}', 
+              f'compat_res {compat_res.item():.8f} acc {acc:0.8f}'
+        )
+        loss_rec['pde'].append(pde_res.item())
+        loss_rec['bc'].append(bc_res.item())
+        loss_rec['compat'].append(compat_res.item())
+        loss_rec['acc'].append(acc.item())
+        loss_rec['lr'].append(optimizer.param_groups[0]['lr'])
+    return loss_rec
         
 
 def train_guided(

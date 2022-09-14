@@ -1,0 +1,6 @@
+MLP1DPOISSONTEACHER:
+  in_dim: 1
+  out_dim: 2
+  hid_dim: 4
+  num_hid_layer: 3
+  act_type: silu
