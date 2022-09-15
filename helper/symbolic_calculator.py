@@ -18,7 +18,7 @@ class EvalNp():
             out = out * np.ones((ndata, self.u_dim))
         return out
 
-def get_laplacian(u:Expr, x:List[Symbol]):
+def get_laplacian(u:Expr, x:List[Symbol])->Expr:
     lap = 0.
     for xi in x:
         lap += sp.diff(sp.diff(u, xi), xi)
