@@ -1,1 +1,3 @@
-# pinn_pre_train_paper
+# NOTE: NOT COMPLETED ...
+# pinn_pre_train_paper: 
+# https://arxiv.org/abs/2107.11496
