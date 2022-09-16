@@ -5,6 +5,7 @@ import pathlib
 pjoin = os.path.join
 SCRIPT_DIR = os.path.abspath(pathlib.Path(__file__).parent.absolute())
 PROBLEM_SETUP_DIR = pjoin(SCRIPT_DIR, "data")
+PLANE_COND = "plane_strain"
 ELAST_MOD = 1.
 POISSON_RATIO = 0.3
 HOLE_RAD = 0.25
@@ -252,7 +253,9 @@ if __name__ == "__main__":
         {'x0':cord_pde_train[:, 0], 'x1':cord_pde_train[:, 1],
          'u0':u_pde_train[:, 0], 'u1':u_pde_train[:, 1],
          'e00':eps_pde_train[:, 0], 'e11':eps_pde_train[:, 1],
-         'e01':eps_pde_train[:, 2]
+         'e01':eps_pde_train[:, 2],
+         'source0':np.zeros(eps_pde_train.shape[0]),
+         'source1':np.zeros(eps_pde_train.shape[0])
         }
     ).to_csv(pjoin(PROBLEM_SETUP_DIR, "pde_data_train.csv"), index=False)
     pd.DataFrame(
@@ -262,6 +265,7 @@ if __name__ == "__main__":
     ).to_csv(pjoin(PROBLEM_SETUP_DIR, "dirichlet_bc_data_train.csv"), index=False)
     pd.DataFrame(
         {'x0':cord_nbc_train[:, 0], 'x1':cord_nbc_train[:, 1],
+         'n0':normal_nbc_train[:, 0], 'n1':normal_nbc_train[:, 1],
          'trac0':trac_nbc_train[:, 0], 'trac1':trac_nbc_train[:, 1]
         }
     ).to_csv(pjoin(PROBLEM_SETUP_DIR, "neumann_bc_data_train.csv"), index=False)    

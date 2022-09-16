@@ -1,0 +1,20 @@
+MLP2DBYHARMONIC:
+  lr: 0.001
+  min_lr: 1.e-5
+  lr_patience: 50
+  lr_red_factoe: 0.8
+  epochs: 60000
+  lr_sch_epoch: 3000
+
+# MLP2DPOISSONGUIDED:
+#   lr: 0.001
+#   min_lr: 1.e-6
+#   lr_patience: 50
+#   lr_red_factoe: 0.8
+#   epochs: 8000
+#   lr_sch_epoch: 2000
+#   auxilary_task_params:
+#     method: stepwise
+#     offset_epoch: 2000
+#     reduction_factor: 2.
+#     step_size : 200

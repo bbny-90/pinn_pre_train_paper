@@ -1,5 +1,23 @@
 import inspect
 
+def test_divergence_vector_2d():
+    from pdes.operators import get_divergence_vector
+    from helper.other import get_torch_device
+    import torch
+    import numpy as np
+    device = get_torch_device()
+    ndata, ndim = 10, 2
+    x = torch.rand(ndata, ndim).float().to(device=device)
+    x.requires_grad_(True)
+    y = torch.zeros(ndata, ndim)
+    y[:, 0] += x[:, 0]**2
+    y[:, 1] += x[:, 1]**2
+    div_y = get_divergence_vector(y, x, device=device).detach().numpy().flatten()
+    x = x.detach().numpy()
+    div_y_exact = np.sum(x, axis=1) * 2.
+    assert np.allclose(div_y, div_y_exact)
+    print(f"{inspect.stack()[0][3]} is passed")
+
 def test_laplace_1d():
     from pdes.operators import get_laplace_scalar
     from helper.other import get_torch_device
@@ -31,5 +49,6 @@ def test_laplace_3d():
     print(f"{inspect.stack()[0][3]} is passed")
 
 if __name__ == "__main__":
+    test_divergence_vector_2d()
     test_laplace_1d()
     test_laplace_3d()
