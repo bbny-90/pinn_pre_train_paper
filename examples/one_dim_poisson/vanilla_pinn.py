@@ -17,6 +17,9 @@ TRAIN_NAME = "MLP1DPOISSON"
 LOSS_WEIGHTS = {"pde":1., "bc":1.}
 problem_data_dir = pjoin(SCRIPT_DIR, "data/")
 out_dir = pjoin(SCRIPT_DIR, ".tmp/vanilla_pinn/")
+if not os.path.exists(out_dir):
+    os.makedirs(out_dir)
+
 
 def read_and_train(random_seed = None):
     if random_seed is not None:
@@ -29,9 +32,9 @@ def read_and_train(random_seed = None):
 
 
     with open(pjoin(SCRIPT_DIR, "configs/network.yaml")) as f:
-        mlp_config = yaml.load(f)[NETWORK_NAME]
+        mlp_config = yaml.safe_load(f)[NETWORK_NAME]
     with open(pjoin(SCRIPT_DIR, "configs/train.yaml")) as f:
-        train_config = yaml.load(f)[TRAIN_NAME]
+        train_config = yaml.safe_load(f)[TRAIN_NAME]
 
     device = get_torch_device()
     sol = MLP(mlp_config)
