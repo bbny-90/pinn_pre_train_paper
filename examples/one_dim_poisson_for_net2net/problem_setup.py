@@ -24,17 +24,21 @@ def create_data():
     from helper.symbolic_calculator import EvalNp, get_laplacian   
     symb_sol = SymbSol()
     lap_u = get_laplacian(symb_sol.u, symb_sol.x)
+    d_u = sp.diff(symb_sol.u, symb_sol.x[0])
+    
     eval_np_u = EvalNp(symb_sol.x, symb_sol.u, 1)
     eval_np_lap_u = EvalNp(symb_sol.x, lap_u, 1)
+    eval_np_du = EvalNp(symb_sol.x, d_u, 1)
 
     x_pde = np.linspace(X_LEFT, X_RIGHT, NUM_PDE_PNTS, endpoint=False)[1:].reshape(-1, 1)
     u_pde = eval_np_u(x_pde).flatten()
     source_pde = eval_np_lap_u(x_pde).flatten()    
+    du_pde = eval_np_du(x_pde).flatten()
     
     x_bc = np.array([X_LEFT, X_RIGHT]).reshape(-1, 1)
     u_bc = eval_np_u(x_bc).flatten()
     
-    pd.DataFrame({'x':x_pde.flatten(), 'u':u_pde, 'source':source_pde}
+    pd.DataFrame({'x':x_pde.flatten(), 'u':u_pde, 'source':source_pde, 'du':du_pde}
     ).to_csv(pjoin(PROBLEM_SETUP_DIR, "pde_data.csv"), index=False)
     pd.DataFrame({'x':x_bc.flatten(), 'u':u_bc}
     ).to_csv(pjoin(PROBLEM_SETUP_DIR, "bc_data.csv"), index=False)

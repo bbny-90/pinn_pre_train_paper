@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 import os
 import json
 import torch
@@ -79,6 +79,14 @@ class MLP(torch.nn.Module):
             self.actFun = SiLU()
         else:
             raise NotImplementedError(f"activation {self.act_type} is not supported")
+        if "weight_initilization" in params:
+            params_weight_initilization = params['weight_initilization']
+        else:
+            params_weight_initilization = None
+        if "bias_initilization" in params:
+            params_bias_initilization = params['bias_initilization']
+        else:
+            params_bias_initilization = None
 
         tmp = [self.in_dim] + [self.hid_dim] * self.num_hid_layer + [self.out_dim]
         self.mlp = torch.nn.ModuleList()
@@ -86,12 +94,14 @@ class MLP(torch.nn.Module):
         with torch.no_grad():
             for i in range(len(tmp) - 2):
                 lin = torch.nn.Linear(tmp[i], tmp[i + 1])
-                self.layer_weight_initilizer(lin)
+                self.layer_weight_initilizer(lin, params_weight_initilization)
+                self.layer_bias_initilizer(lin, params_bias_initilization)
                 self.mlp.append(lin)
                 self.weight_layer_indices.append(i * 2)
                 self.mlp.append(self.actFun)
         lin = torch.nn.Linear(tmp[-2], tmp[-1])
-        self.layer_weight_initilizer(lin)
+        self.layer_weight_initilizer(lin, params_weight_initilization)
+        self.layer_bias_initilizer(lin, params_bias_initilization)
         self.mlp.append(lin)
         self.weight_layer_indices.append(i * 2+2)
         if nn_weights_path:
@@ -103,15 +113,31 @@ class MLP(torch.nn.Module):
 
     @ staticmethod
     def layer_weight_initilizer(
-        linear_lyer:torch.nn.Linear, init_type = "gloret",
+        linear_lyer:torch.nn.Linear, 
+        params: Optional[Dict] = None,
     )-> None:
-        if init_type == "gloret":
-            with torch.no_grad():
+        with torch.no_grad():
+            if params is None or params['type'] == "gloret":
+                    std = np.sqrt(2.0/(sum(linear_lyer.weight.data.shape)))
+                    torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
+            elif params['type'] == "standard_guassian":
+                    std = params['std']
+                    torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
+            else:
+                raise NotImplementedError(params['type'])
+
+    @ staticmethod
+    def layer_bias_initilizer(
+        linear_lyer:torch.nn.Linear, 
+        params: Optional[Dict] = None,
+    )-> None:
+        with torch.no_grad():
+            if params is None:
                 torch.nn.init.constant_(linear_lyer.bias, 0.)
-                std = np.sqrt(2.0/(sum(linear_lyer.weight.data.shape)))
-                torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
-        else:
-            raise NotImplementedError()
+            elif params['type'] == "constant":
+                torch.nn.init.constant_(linear_lyer.bias, params['value'])
+            else:
+                raise NotImplementedError(params['type'])
 
     def get_network_architecture(self) -> List[int]:
         out = []

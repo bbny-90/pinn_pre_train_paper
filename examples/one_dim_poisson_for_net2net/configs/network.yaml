@@ -4,3 +4,10 @@ MLP1DPOISSONTEACHER:
   hid_dim: 4
   num_hid_layer: 3
   act_type: silu
+  weight_initilization:
+    type: standard_guassian
+    std: 2.
+  bias_initilization:
+    type: constant
+    value: 0.
+    

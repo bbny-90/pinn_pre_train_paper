@@ -31,9 +31,9 @@ def read_and_train(random_seed = None):
 
 
     with open(pjoin(SCRIPT_DIR, "configs/network.yaml")) as f:
-        mlp_config = yaml.load(f)[NETWORK_NAME]
+        mlp_config = yaml.safe_load(f)[NETWORK_NAME]
     with open(pjoin(SCRIPT_DIR, "configs/train.yaml")) as f:
-        train_config = yaml.load(f)[TRAIN_NAME]
+        train_config = yaml.safe_load(f)[TRAIN_NAME]
 
     device = get_torch_device()
     sol = MLP(mlp_config)
