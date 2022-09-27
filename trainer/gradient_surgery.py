@@ -9,7 +9,6 @@ import numpy as np
 class PCGrad():
     def __init__(self, 
             optimizer:Optimizer, 
-            need_surgery=True,
             lr_scheduler:Optional[ReduceLROnPlateau]=None,
         ):
         """
@@ -21,7 +20,6 @@ class PCGrad():
         """
         self._optim = optimizer
         self._lr_scheduler = lr_scheduler
-        self.need_surgery = need_surgery
 
     @property
     def optimizer(self):
@@ -118,6 +116,16 @@ class PCGrad():
         grad, shape = [], []
         for group in self._optim.param_groups:
             for p in group['params']:
-                grad.append(p.grad.clone())
-                shape.append(p.grad.shape)
+                if p.grad is not None:
+                    grad.append(p.grad.clone())
+                    shape.append(p.grad.shape)
+                else:
+                    # This could happend for some uncommon loss functions
+                    # e.g., when applying gradient operator, a parametr contribution 
+                    # (e.g., the bias term in the last layer of MLP for a PINN problem)
+                    # can be gone so there is no back propagation
+                    #
+                    # NOTE: this break differentiability for possible downstream tasks
+                    grad.append(torch.zeros_like(p))
+                    shape.append(p.shape)
         return grad, shape
