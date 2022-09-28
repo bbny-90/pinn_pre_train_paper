@@ -26,18 +26,6 @@ rc('font',family='serif')
 rc('axes',labelsize=20)
 rc('lines', linewidth=2,markersize=10)
 
-
-def find_best_teacher_id()->int:
-    
-    min_loss, best_id = np.inf, -1
-    for i in range(num_seeds):
-        data = pd.read_csv(
-            pjoin(TEACHER_DIR, f"loss_train_{i}.csv")
-        )
-        new_err = data[['bc', 'pde', 'compat']].iloc[-1, :].sum()
-        if new_err < min_loss:
-            min_loss, best_id = new_err, i
-    return best_id
         
 
 
@@ -121,12 +109,12 @@ def plot_error_student(best_teacher_id):
     )
     PROBLEM_DATA_DIR
     data_true = pd.read_csv(pjoin(PROBLEM_DATA_DIR, "pde_data.csv"))
-
+    # plt.rcParams['text.usetex'] = True
     # plt.plot(data_true['x'], data_true['u'] - data_best_techer['u'], linestyle='-.', color='k', label='exact')
     plt.plot(data_best_techer['x'], np.abs(data_true['u'] - data_best_techer['u']), linestyle='--', color='r', label='teacher')
     plt.plot(data_student['x'], np.abs(data_true['u'] - data_student['u']), linestyle='--', color='b', label='student')
     plt.xlabel('x')
-    plt.ylabel('u')
+    plt.ylabel(r'|$u_{exact} - u_{pred}|$')
     plt.tight_layout()
     plt.legend()
     plt.savefig(STUDENT_DIR + 'u_teach_stud_exact.png')
@@ -137,7 +125,7 @@ def plot_error_student(best_teacher_id):
     plt.plot(data_best_techer['x'], np.abs(data_true['du'] - data_best_techer['du']), linestyle='--', color='r', label='teacher')
     plt.plot(data_student['x'], np.abs(data_true['du'] - data_student['du']), linestyle='--', color='b', label='student')
     plt.xlabel('x')
-    plt.ylabel('u')
+    plt.ylabel(r'$|du_{exact} - du_{pred}|$')
     plt.tight_layout()
     plt.legend()
     plt.savefig(STUDENT_DIR + 'du_teach_stud_exact.png')
