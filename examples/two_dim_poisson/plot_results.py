@@ -119,7 +119,34 @@ def plot_pinn_guided_fem_solution(x:np.ndarray, Nx:int, Ny:int, train_conf_name)
     contour(resh(x[:,0]), resh(x[:,1]), resh(u), 
         title=None, dir_save=OUT_DIR_FEM_PINN, name_save="u_pred")
 
+def plot_loss_pinn_vanilla(
+    ):
+    data_df = pd.read_csv(pjoin(OUT_DIR_VAN_PINN, "loss_train_0.csv"))
+    plt.rcParams["figure.figsize"] = (8,7)
+    for case in ['bc', 'pde' ,'val']:
+        plt.plot(data_df[case].to_numpy(), label=case)
+    plt.yscale('log')
+    plt.xlabel('epoch'); plt.ylabel('MSE')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(pjoin(OUT_DIR_VAN_PINN, "loss_train_0.png"))
+    # plt.show()
+    plt.close()
 
+def plot_loss_pinn_guide(train_conf_name:str) -> None:
+    tmp_dir = pjoin(SCRIPT_DIR,  f".tmp/fem_guide_pinn_{train_conf_name}")
+    data_df = pd.read_csv(pjoin(tmp_dir, "loss_train_0.csv")
+    )
+    plt.rcParams["figure.figsize"] = (8,7)
+    for case in ['bc', 'pde' ,'val', 'guide']:
+        plt.plot(data_df[case].to_numpy(), label=case)
+    plt.yscale('log')
+    plt.xlabel('epoch'); plt.ylabel('MSE')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(pjoin(tmp_dir, "loss_train_0.png"))
+    # plt.show()
+    plt.close()
 
 if __name__ == "__main__":
     plot_domain()
@@ -127,5 +154,8 @@ if __name__ == "__main__":
     x_test = create_test_data(Nx_tst, Ny_tst)
     plot_exact_solution(x_test, Nx_tst, Ny_tst)
     plot_pinn_vanilla_solution(x_test, Nx_tst, Ny_tst)
+    plot_loss_pinn_vanilla()
     plot_pinn_guided_fem_solution(x_test, Nx_tst, Ny_tst, "MLP2DPOISSONGUIDED1")
+    plot_loss_pinn_guide("MLP2DPOISSONGUIDED1")
     plot_pinn_guided_fem_solution(x_test, Nx_tst, Ny_tst, "MLP2DPOISSONGUIDED2")
+    plot_loss_pinn_guide("MLP2DPOISSONGUIDED2")
