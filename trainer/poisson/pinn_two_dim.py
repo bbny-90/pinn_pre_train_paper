@@ -4,6 +4,7 @@ import torch
 from models.nueral_net_pt import MLP
 from pdes.operators import get_laplace_scalar
 from trainer.helper import AuxilaryTaskScheduler
+# from trainer.gradient_surgery import PCGrad
 
 def train_vanilla(
     solution:MLP,
@@ -24,20 +25,26 @@ def train_vanilla(
     weight_pde = loss_weights['pde']
     weight_bc = loss_weights['bc']
     #
-    optimizer = torch.optim.Adam(solution.parameters(), lr=lr)
+    base_optimizer = torch.optim.Adam(solution.parameters(), lr=lr)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( 
-            optimizer, mode='min', patience=lr_patience, factor=lr_red_factoe,
+            base_optimizer, mode='min', patience=lr_patience, factor=lr_red_factoe,
             min_lr=min_lr, verbose=False
     )
     #
+    # optimizer = PCGrad(base_optimizer, lr_scheduler=lr_scheduler)
 
     
     u_bc_pt = torch.from_numpy(u_dbc).float().to(device=device)
     source_pde_pt = torch.from_numpy(source_pde).float().to(device=device)
     #
     loss_rec = {'bc':[], 'pde':[], 'val':[], 'lr':[]}
+    loss_weights = {'bc':weight_pde, 'pde':weight_bc}
+    tmp = sum(loss_weights.values())
+    loss_weights = {k:v/tmp for k, v in loss_weights.items()}
+    epsilon = 2.
     for epoch in range(epochs):
-        optimizer.zero_grad()
+        # optimizer.zero_grad()
+        base_optimizer.zero_grad()
         x_pde_pt = torch.from_numpy(x_pde).float().requires_grad_(True).to(device=device)
         x_dbc_pt = torch.from_numpy(x_dbc).float().requires_grad_(True).to(device=device)
         u_pde_pred = solution(x_pde_pt)
@@ -45,9 +52,11 @@ def train_vanilla(
         lap_u_pde = get_laplace_scalar(u_pde_pred,x_pde_pt, device)
         pde_res = (lap_u_pde - source_pde_pt).pow(2).mean()
         bc_res = (u_dbc_pred - u_bc_pt).pow(2).mean()
-        loss_tot = weight_pde * pde_res + weight_bc * bc_res
+
+        loss_tot = loss_weights['pde'] * pde_res + loss_weights['bc'] * bc_res
         loss_tot.backward()
-        optimizer.step()
+        base_optimizer.step()
+        loss_tot = loss_tot.item()
         if epoch > lr_sch_epoch:
             lr_scheduler.step(loss_tot)
         if x_val is not None:
@@ -58,13 +67,15 @@ def train_vanilla(
                 )
         else:
             val = -1.
-        print(f'epoch {epoch}:', f'loss_tot {loss_tot.item():.8f} ', 
-              f'pde_res {pde_res.item():.8f} bc_res {bc_res.item():.8f} val {val:0.8f}'
+        print(f'epoch {epoch}:', f'loss_tot {loss_tot:.8f} ', 
+              f'pde_res {pde_res.item():.8f} bc_res {bc_res.item():.8f} val {val:0.8f}',
+              f"w_bc {loss_weights['bc']} w_pde {loss_weights['pde']}"
         )
         loss_rec['pde'].append(pde_res.item())
         loss_rec['bc'].append(bc_res.item())
         loss_rec['val'].append(val.item())
-        loss_rec['lr'].append(optimizer.param_groups[0]['lr'])
+        # loss_rec['lr'].append(optimizer._optim.param_groups[0]['lr'])
+        loss_rec['lr'].append(base_optimizer.param_groups[0]['lr'])
     return loss_rec
 
 
@@ -90,23 +101,28 @@ def train_guided(
     weight_bc = loss_weights['bc']
     weight_guide = loss_weights['guide']
     #
-    optimizer = torch.optim.Adam(solution.parameters(), lr=lr)
+    base_optimizer = torch.optim.Adam(solution.parameters(), lr=lr)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( 
-            optimizer, mode='min', patience=lr_patience, factor=lr_red_factoe,
+            base_optimizer, mode='min', patience=lr_patience, factor=lr_red_factoe,
             min_lr=min_lr, verbose=False
     )
     #
-
+    # optimizer = PCGrad(base_optimizer, lr_scheduler=lr_scheduler)
     
     u_bc_pt = torch.from_numpy(u_dbc).float().to(device=device)
     source_pde_pt = torch.from_numpy(source_pde).float().to(device=device)
     u_guide_pt = torch.from_numpy(u_guide).float().to(device=device)
     #
-    loss_rec = {'bc':[], 'pde':[], 'val':[], 'lr':[]}
+    loss_rec = {'bc':[], 'pde':[], 'guide':[], 'val':[], 'lr':[]}
+    loss_weights = {'bc':weight_pde, 'pde':weight_bc, 'guide':weight_guide}
     aux_scheduler = AuxilaryTaskScheduler(auxilary_task_params)
     for epoch in range(epochs):
-        weight_guide = aux_scheduler(curent_penalty=weight_guide, epoch=epoch)
-        optimizer.zero_grad()
+        loss_weights['guide'] = aux_scheduler(curent_penalty=loss_weights['guide'], epoch=epoch)
+        tmp = sum(loss_weights.values())
+        loss_weights = {k:v/tmp for k, v in loss_weights.items()}
+        del tmp
+        # optimizer.zero_grad()
+        base_optimizer.zero_grad()
         x_pde_pt = torch.from_numpy(x_pde).float().requires_grad_(True).to(device=device)
         x_dbc_pt = torch.from_numpy(x_dbc).float().requires_grad_(True).to(device=device)
         x_guide_pt = torch.from_numpy(x_guide).float().to(device=device)
@@ -117,9 +133,13 @@ def train_guided(
         pde_res = (lap_u_pde - source_pde_pt).pow(2).mean()
         bc_res = (u_dbc_pred - u_bc_pt).pow(2).mean()
         guide_res = (u_guide_pred - u_guide_pt).pow(2).mean()
-        loss_tot = weight_pde * pde_res + weight_bc * bc_res + weight_guide * guide_res
+
+        loss_tot = pde_res * loss_weights['pde'] +\
+            bc_res * loss_weights['bc']+\
+            guide_res * loss_weights['guide']      
         loss_tot.backward()
-        optimizer.step()
+        base_optimizer.step()
+        loss_tot = loss_tot.item()
         if epoch > lr_sch_epoch:
             lr_scheduler.step(loss_tot)
         if x_val is not None:
@@ -130,12 +150,17 @@ def train_guided(
                 )
         else:
             val = -1.
-        print(f'epoch {epoch}:', f'loss_tot {loss_tot.item():.8f} ', 
-              f'pde_res {pde_res.item():.8f} bc_res {bc_res.item():.8f}', 
-              f'guide_res {guide_res.item():0.8f} val {val:0.8f}'
+        print(f'epoch {epoch}:', f'loss_tot {loss_tot:.6f} ', 
+              f'pde_res {pde_res.item():.6f} bc_res {bc_res.item():.6f}', 
+              f'guide_res {guide_res.item():0.6f} val {val:0.6f}',
+              f'w_pde {loss_weights["pde"]:0.3f}',
+              f'w_bc {loss_weights["bc"]:0.3f}',
+              f'w_guide {loss_weights["guide"]:0.3f}',
         )
         loss_rec['pde'].append(pde_res.item())
         loss_rec['bc'].append(bc_res.item())
+        loss_rec['guide'].append(guide_res.item())
         loss_rec['val'].append(val.item())
-        loss_rec['lr'].append(optimizer.param_groups[0]['lr'])
+        # loss_rec['lr'].append(optimizer._optim.param_groups[0]['lr'])
+        loss_rec['lr'].append(base_optimizer.param_groups[0]['lr'])
     return loss_rec

@@ -118,11 +118,11 @@ class MLP(torch.nn.Module):
     )-> None:
         with torch.no_grad():
             if params is None or params['type'] == "gloret":
-                    std = np.sqrt(2.0/(sum(linear_lyer.weight.data.shape)))
-                    torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
+                std = np.sqrt(2.0/(sum(linear_lyer.weight.data.shape)))
+                torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
             elif params['type'] == "standard_guassian":
-                    std = params['std']
-                    torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
+                std = params['std']
+                torch.nn.init.normal_(linear_lyer.weight, mean=0, std=std)
             else:
                 raise NotImplementedError(params['type'])
 

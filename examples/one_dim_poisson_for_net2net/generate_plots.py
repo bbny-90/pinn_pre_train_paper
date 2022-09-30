@@ -1,5 +1,6 @@
 import os
 import pathlib
+import yaml
 pjoin = os.path.join
 SCRIPT_DIR = os.path.abspath(pathlib.Path(__file__).parent.absolute())
 
@@ -10,8 +11,10 @@ from examples.one_dim_poisson_for_net2net.train_student_after_net2net import (
     STUDENT_DIR,
     PROBLEM_DATA_DIR
 )
+from examples.one_dim_poisson_for_net2net.train_teacher import TRAIN_NAME as TRAIN_NAME_TEACHER
 
-num_seeds = 50
+
+num_seeds = len([1 for add in os.listdir(TEACHER_DIR) if add.startswith("net_weight_")])
 # TRAIN_TEACHER_DATA_DIR = pjoin(SCRIPT_DIR, f".tmp/teachers/")
 # TRAIN_STUDENT_DATA_DIR = pjoin(SCRIPT_DIR, f".tmp/student/")
 # TRUE_DATA_ADD = pjoin(SCRIPT_DIR, f"data/pde_data.csv")
@@ -105,7 +108,7 @@ def plot_error_student(best_teacher_id):
         pjoin(TEACHER_DIR, f"solution_after_train_{best_teacher_id}.csv")
     )
     data_student = pd.read_csv(
-        pjoin(STUDENT_DIR, f"solution_after_train_rand.csv")
+        pjoin(STUDENT_DIR, f"solution_after_train_0.csv")
     )
     PROBLEM_DATA_DIR
     data_true = pd.read_csv(pjoin(PROBLEM_DATA_DIR, "pde_data.csv"))
@@ -118,7 +121,7 @@ def plot_error_student(best_teacher_id):
     plt.tight_layout()
     plt.legend()
     plt.savefig(STUDENT_DIR + 'u_teach_stud_exact.png')
-    plt.show()
+    # plt.show()
     plt.close()
 
     # plt.plot(data_true['x'], data_true['du'], linestyle='-.', color='k', label='exact')
@@ -129,7 +132,7 @@ def plot_error_student(best_teacher_id):
     plt.tight_layout()
     plt.legend()
     plt.savefig(STUDENT_DIR + 'du_teach_stud_exact.png')
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -162,7 +165,7 @@ def plot_loss_relative(
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_address)
-    plt.show()
+    # plt.show()
     plt.close()
 
 def plot_loss_relative_zoomin(
@@ -181,11 +184,18 @@ def plot_loss_relative_zoomin(
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_address)
-    plt.show()
+    # plt.show()
     plt.close()
 
 if __name__ == "__main__":
-    teacher_loss_add, teacher_score = get_best_teacher_add(TEACHER_DIR)
+    with open(pjoin(SCRIPT_DIR, "configs/train.yaml")) as f:
+        train_config = yaml.safe_load(f)[TRAIN_NAME_TEACHER]
+    LOSS_WEIGHTS = {
+        'pde':train_config['pde_weight'], 
+        'bc': train_config['bc_weight'], 
+        'compat':train_config['compat_weight']
+    }
+    teacher_loss_add, teacher_score = get_best_teacher_add(TEACHER_DIR, LOSS_WEIGHTS)
     teacher_id = int((teacher_loss_add.split("_")[-1]).split(".")[0])
     print(f"best teacher id {teacher_id}")
     plot_solution_teachers(teacher_id)
@@ -193,7 +203,7 @@ if __name__ == "__main__":
 
     best_teacher_loss_df = pd.read_csv(pjoin(TEACHER_DIR, f"loss_train_{teacher_id}.csv"))
     plot_loss(best_teacher_loss_df, pjoin(TEACHER_DIR, f"loss_train_{teacher_id}.png"))
-    student_loss_df = pd.read_csv(pjoin(STUDENT_DIR, f"loss_train_rand.csv"))
+    student_loss_df = pd.read_csv(pjoin(STUDENT_DIR, f"loss_train_0.csv"))
     plot_loss_relative(student_loss_df, best_teacher_loss_df,
         pjoin(STUDENT_DIR, f"loss_train_relative.png")
     )

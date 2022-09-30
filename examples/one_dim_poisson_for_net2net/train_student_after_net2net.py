@@ -16,12 +16,11 @@ from helper.other import get_torch_device
 
 NETWORK_NAME = "MLP1DPOISSONTEACHER"
 TRAIN_NAME = "MLP1DPOISSONSTUDENT"
-LOSS_WEIGHTS = {"pde":1., "bc":1., "compat":1.}
 PROBLEM_DATA_DIR = pjoin(SCRIPT_DIR, "data/")
 TEACHER_DIR = pjoin(SCRIPT_DIR, ".tmp/teachers/")
 STUDENT_DIR = pjoin(SCRIPT_DIR, ".tmp/student/")
 
-def get_best_teacher_add(root_dir:str)->Tuple[str, float]:
+def get_best_teacher_add(root_dir:str, LOSS_WEIGHTS)->Tuple[str, float]:
     min_tot_loss = np.inf
     min_add = None
     for add in os.listdir(root_dir):
@@ -55,8 +54,13 @@ def read_and_train(random_seed = None):
         mlp_config = yaml.safe_load(f)[NETWORK_NAME]
     with open(pjoin(SCRIPT_DIR, "configs/train.yaml")) as f:
         train_config = yaml.safe_load(f)[TRAIN_NAME]
-
-    teacher_loss_add, teacher_score = get_best_teacher_add(TEACHER_DIR)
+    LOSS_WEIGHTS = {
+        'pde':train_config['pde_weight'], 
+        'bc': train_config['bc_weight'], 
+        'compat':train_config['compat_weight']
+    }
+    
+    teacher_loss_add, teacher_score = get_best_teacher_add(TEACHER_DIR, LOSS_WEIGHTS)
     teacher_id = int((teacher_loss_add.split("_")[-1]).split(".")[0])
     print(f"best teacher id: {teacher_id}")
     teacher_weight_add = pjoin(TEACHER_DIR, f"net_weight_{teacher_id}")

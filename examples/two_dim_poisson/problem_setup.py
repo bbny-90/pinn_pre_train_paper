@@ -16,12 +16,24 @@ NUM_VAL_PNTS = 400
 PI = np.pi
 PI_SP = sp.pi
 
-class SymbSol():
+class SolverSym():
     def __init__(self) -> None:
         from sympy.abc import x, y
-        u = sp.sin(4.*PI_SP*y) * sp.exp(-4.*PI_SP*x)
+        from helper.symbolic_calculator import EvalNp, get_laplacian
+        w = 4.*PI_SP
+        u = sp.sin(w*y) * sp.exp(-w*x)
         self.x = [x, y]
         self.u = u
+        lap_u = get_laplacian(self.u, self.x)
+        self.eval_np_u = EvalNp(self.x, self.u, 1)
+        self.eval_np_lap_u = EvalNp(self.x, lap_u, 1)
+    
+    def get_laplacian(self, x:np.ndarray):
+        return self.eval_np_lap_u(x).flatten()
+
+    def get_solution(self, x:np.ndarray):
+        return self.eval_np_u(x).flatten()
+
 
 def get_indomain_collocation_points()->np.ndarray:
     x = np.linspace(X_LEFT, X_RIGHT, NX, endpoint=False)[1:]
@@ -61,26 +73,22 @@ def get_exact_solution(x:np.ndarray)->np.ndarray:
 def create_data():
     if not os.path.exists(PROBLEM_SETUP_DIR):
         os.makedirs(PROBLEM_SETUP_DIR)
-    from helper.symbolic_calculator import EvalNp, get_laplacian   
-    symb_sol = SymbSol()
-    lap_u = get_laplacian(symb_sol.u, symb_sol.x)
-    eval_np_u = EvalNp(symb_sol.x, symb_sol.u, 1)
-    eval_np_lap_u = EvalNp(symb_sol.x, lap_u, 1)
+    symb_sol = SolverSym()
     
     x_pde = get_indomain_collocation_points()
-    u_pde = eval_np_u(x_pde)
-    source_pde = eval_np_lap_u(x_pde).flatten()
+    u_pde = symb_sol.get_solution(x_pde)
+    source_pde = symb_sol.get_laplacian(x_pde)
     
     x_bc = get_bc_pnts()
-    u_bc = eval_np_u(x_bc)
+    u_bc = symb_sol.get_solution(x_bc)
     
     np.random.seed(RANDOM_STATE)
     x_vald = lhs(2, NUM_VAL_PNTS)
     x_vald[:, 0] = x_vald[:, 0] * (X_RIGHT - X_LEFT) + X_LEFT
     x_vald[:, 1] = x_vald[:, 1] * (Y_TOP - Y_BOTTOM) + Y_BOTTOM
     np.random.seed(None)
-    u_vald = eval_np_u(x_vald)
-    source_vald = eval_np_lap_u(x_vald).flatten()
+    u_vald = symb_sol.get_solution(x_vald)
+    source_vald = symb_sol.get_laplacian(x_vald).flatten()
 
     
     pd.DataFrame({'x0':x_pde[:,0], 'x1':x_pde[:,1], 'u':u_pde, 'source':source_pde}

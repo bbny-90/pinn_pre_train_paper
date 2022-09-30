@@ -14,7 +14,7 @@ from helper.other import get_torch_device
 
 NETWORK_NAME = "MLP1DPOISSONTEACHER"
 TRAIN_NAME = "MLP1DPOISSONTEACHER"
-LOSS_WEIGHTS = {"pde":1., "bc":1., "compat":1.}
+
 problem_data_dir = pjoin(SCRIPT_DIR, "data/")
 out_dir = pjoin(SCRIPT_DIR, ".tmp/teachers/")
 
@@ -34,7 +34,11 @@ def read_and_train(random_seed = None):
         mlp_config = yaml.safe_load(f)[NETWORK_NAME]
     with open(pjoin(SCRIPT_DIR, "configs/train.yaml")) as f:
         train_config = yaml.safe_load(f)[TRAIN_NAME]
-
+    LOSS_WEIGHTS = {
+        'pde':train_config['pde_weight'], 
+        'bc': train_config['bc_weight'], 
+        'compat':train_config['compat_weight']
+    }
     device = get_torch_device()
     sol = MLP(mlp_config)
     # response before training

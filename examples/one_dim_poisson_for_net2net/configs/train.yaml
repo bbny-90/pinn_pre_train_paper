@@ -5,6 +5,9 @@ MLP1DPOISSONTEACHER:
   lr_red_factoe: 0.9
   epochs: 1000
   lr_sch_epoch: 2000
+  pde_weight: 1.
+  bc_weight: 1.
+  compat_weight: 1.
 
 MLP1DPOISSONSTUDENT:
   lr: 0.0001
@@ -13,3 +16,6 @@ MLP1DPOISSONSTUDENT:
   lr_red_factoe: 0.9
   epochs: 10000
   lr_sch_epoch: 2000
+  pde_weight: 1.
+  bc_weight: 1.
+  compat_weight: 1.

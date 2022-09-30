@@ -34,15 +34,9 @@ class PCGrad():
     def step(self):
         return self._optim.step()
 
-    def backward_regular(self, 
-        objectives:List[torch.Tensor], 
-        objectives_weights: List[float]
+    def backward_regular(self, objectives:List[torch.Tensor], 
         )-> None:
-        assert len(objectives) == len(objectives_weights),\
-            (len(objectives) == len(objectives_weights))
-        loss = torch.tensor(0.).to(objectives[0].device)
-        for obj, w in zip(objectives, objectives_weights):
-            loss += (obj.mul(w))
+        loss = sum(objectives).to(objectives[0].device)
         loss.backward()
 
 
@@ -67,6 +61,7 @@ class PCGrad():
                 g_i_g_j = torch.dot(g_i, g_j)
                 if g_i_g_j < 0:
                     g_i -= (g_i_g_j) * g_j / (g_j.norm()**2) # TODO: avoid zero division
+        tmp = [torch.norm(g) for g in pc_grad]
         return torch.stack(pc_grad).mean(dim=0).to(grads[0].device)
 
     def _set_grad(self, grads):

@@ -31,11 +31,17 @@ def get_divergence_vector(
     assert y.dim() == x.dim() == 2
     assert y.shape[0] == x.shape[0]
     num_samples, space_dim = y.shape
-    tmp = torch.zeros(num_samples, 1)
+    # tmp = torch.zeros(num_samples, 1)
+    # for i in range(space_dim):
+    #     tmp += grad(y[:,i:i+1], x, torch.ones(num_samples, 1, device=device),
+    #                         create_graph=True, retain_graph=True)[0][:, i:i+1]
+    tmp = []
     for i in range(space_dim):
-        tmp += grad(y[:,i:i+1], x, torch.ones(num_samples, 1, device=device),
+        tmp.append(
+            grad(y[:,i:i+1], x, torch.ones(num_samples, 1, device=device),
                             create_graph=True, retain_graph=True)[0][:, i:i+1]
-    return tmp
+        )
+    return torch.concat(tmp, dim=1).sum(dim=1).view(-1, 1)
 
 def get_laplace_scalar(
     y:torch.tensor, x:torch.tensor, device:torch.device = None

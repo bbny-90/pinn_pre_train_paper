@@ -1,15 +1,16 @@
 import os
 import pathlib
-from typing import Dict, List
+from typing import Dict
 pjoin = os.path.join
 SCRIPT_DIR = os.path.abspath(pathlib.Path(__file__).parent.absolute())
 
 import pandas as pd
 from examples.one_dim_poisson.problem_setup import get_true_solution
+from examples.one_dim_poisson.vanilla_pinn import OUT_DIR as OUT_DIR_VAN
 
 
 problem_data_dir = pjoin(SCRIPT_DIR, ".tmp/problem_data/")
-num_seeds = 10
+num_seeds = len([1 for add in os.listdir(OUT_DIR_VAN) if add.startswith("net_weight_")])
 LOSS_COLUMN_NAME_CHANGE = {'bc':'BC', 'pde':'PDE', 'acc':'Vald'}
 
 import pandas as pd
@@ -61,7 +62,7 @@ def plot_solution(case:str):
     plt.savefig(
         pjoin(out_dir, 'solutions.png')
     )
-    plt.show()
+    plt.close()
 
 def plot_loss(
     data_df:pd.DataFrame, 
@@ -76,7 +77,6 @@ def plot_loss(
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_address)
-    # plt.show()
     plt.close()
 
 def plot_best_loss(case:str):
@@ -100,10 +100,10 @@ def plot_best_loss(case:str):
 
 
 if __name__ == "__main__":
-    # plot_solution("vanilla_pinn")
-    # plot_solution("fem_pinn")
-    # plot_solution("noisy_fem_pinn")
-    # plot_solution("zero_pinn")
+    plot_solution("vanilla_pinn")
+    plot_solution("fem_pinn")
+    plot_solution("noisy_fem_pinn")
+    plot_solution("zero_pinn")
     #
     plot_best_loss("vanilla_pinn")
     plot_best_loss("fem_pinn")
