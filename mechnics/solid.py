@@ -44,7 +44,7 @@ class ElasticityLinear():
         if isinstance(stress_vector, torch.Tensor):
             sig_tensor = torch.zeros(ndata, 2, 2).float().to(device=stress_vector.device)
         elif isinstance(stress_vector, np.ndarray):
-            sig_tensor = np.zeros(ndata, 2, 2)
+            sig_tensor = np.zeros((ndata, 2, 2))
         else:
             raise NotImplementedError(type(stress_vector))
         sig_tensor[:, 0, 0] += stress_vector[:, 0]

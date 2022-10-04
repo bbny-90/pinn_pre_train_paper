@@ -216,6 +216,15 @@ class MLP(torch.nn.Module):
                         self.mlp[layIndx].bias.data[g[k]]
         return widen_net
 
+    def get_total_number_params(self)->int:
+        pp=0
+        for p in list(self.parameters()):
+            nn=1
+            for s in list(p.size()):
+                nn = nn*s
+            pp += nn
+        return pp
+
     def save(self, dir_to_save: str, model_info_name: str, weight_name: str) -> None:
         weight_path = os.path.join(dir_to_save, weight_name)
         torch.save(self.state_dict(), weight_path)

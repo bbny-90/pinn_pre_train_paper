@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 
 .tmp*
+job_del_tmp.sh
