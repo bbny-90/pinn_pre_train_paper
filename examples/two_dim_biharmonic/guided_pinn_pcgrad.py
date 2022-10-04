@@ -22,9 +22,9 @@ from examples.two_dim_biharmonic.problem_setup import (
 )
 
 NETWORK_NAME = "MLP2DBYHARMONIC"
-TRAIN_NAME = "MLP2DBYHARMONICG"
+TRAIN_NAME = "MLP2DBYHARMONICGUIDED"
 problem_data_dir = pjoin(SCRIPT_DIR, "data/")
-out_dir = pjoin(SCRIPT_DIR, ".tmp/vannila_pinn/")
+out_dir = pjoin(SCRIPT_DIR, ".tmp/fem_guided_pinn_pcgrad/")
 
 class MLPSCALED(MLP):
     def __init__(self, 
@@ -76,9 +76,8 @@ def plot_points(pde_points, guide_pnts, dbc_points, nbc_points):
     pnts_all = []
     for pnts in guide_pnts:
         pnts_all.append(pnts.x)
-    if guide_pnts:
-        pnts_all = np.concatenate(pnts_all)
-        plt.plot(pnts_all[:, 0], pnts_all[:, 1], '.', label='fem')
+    pnts_all = np.concatenate(pnts_all)
+    plt.plot(pnts_all[:, 0], pnts_all[:, 1], '.', label='fem')
 
     pnts_all = []
     for pnts in dbc_points:
@@ -104,17 +103,19 @@ def read_and_train(random_seed = None):
         torch.manual_seed(random_seed)
     else:
         random_seed = "rand"
-    pde_points, dbc_points, nbc_points, _ = get_train_data_information()
-    guide_pnts = []
+    pde_points, dbc_points, nbc_points, guide_pnts = get_train_data_information()
     if 1:
         plot_points(pde_points, guide_pnts, dbc_points, nbc_points)
+    data_u = [i.disp for i in guide_pnts] + [i.val for i in dbc_points]
+    data_u = np.concatenate(data_u)
     data_x = [i.x for i in guide_pnts] + [i.x for i in dbc_points]+\
             [i.x for i in pde_points] + [i.x for i in nbc_points]
     data_x = np.concatenate(data_x)
+    data_eps = np.concatenate([i.strain for i in guide_pnts])
     
     x_stats = {'mean':data_x.mean(axis=0), 'std':data_x.std(axis=0)}
-    u_stats = {'mean':np.zeros(2), 'std':np.ones(2)}
-    eps_stats = {'mean':np.zeros(3), 'std':np.ones(3)}
+    u_stats = {'mean':data_u.mean(axis=0), 'std':data_u.std(axis=0)}
+    eps_stats = {'mean':data_eps.mean(axis=0), 'std':data_eps.std(axis=0)}
     
 
     with open(pjoin(SCRIPT_DIR, "configs/network.yaml")) as f:

@@ -85,7 +85,6 @@ def train_guided_mixed_disp_strain(
     # guide
     guide_pnts: List[InternalPointsSolidMixedForm],
     #
-    loss_weights:Dict[str, float],
     train_params: dict,
     device: torch.device,
     #
@@ -99,15 +98,20 @@ def train_guided_mixed_disp_strain(
     lr_red_factoe = train_params['lr_red_factoe']
     epochs = train_params['epochs']
     lr_sch_epoch = train_params['lr_sch_epoch']
-    auxilary_task_params_u:dict = train_params['auxilary_task_params']['u']
-    auxilary_task_params_eps:dict = train_params['auxilary_task_params']['eps']
+    if "auxilary_task_params" in train_params:
+        auxilary_task_params_u:dict = train_params['auxilary_task_params']['u']
+        auxilary_task_params_eps:dict = train_params['auxilary_task_params']['eps']
+    else:
+        auxilary_task_params_u = dict()
+        auxilary_task_params_eps = dict()
+
     need_surgury = train_params['need_surgury']
-    weight_pde = loss_weights['pde']
-    weight_dbc = loss_weights['dbc']
-    weight_nbc = loss_weights['nbc']
-    weight_compat = loss_weights['compat']
-    weight_guide_u = loss_weights['u_guide']
-    weight_guide_eps = loss_weights['eps_guide']
+    weight_pde = train_params['weight_pde']
+    weight_dbc = train_params['weight_dbc']
+    weight_nbc = train_params['weight_nbc']
+    weight_compat = train_params['weight_compat']
+    weight_guide_u = train_params['weight_u_guide']
+    weight_guide_eps = train_params['weight_eps_guide']
     #
     base_optimizer = torch.optim.Adam(solution.parameters(), lr=lr)
     lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau( 
@@ -116,7 +120,11 @@ def train_guided_mixed_disp_strain(
     )
     optimizer = PCGrad(base_optimizer, lr_scheduler=lr_scheduler)
     #
-    std_u, std_eps = get_normalization_factor(dbc_pnts, guide_pnts)
+    if guide_pnts:
+        std_u, std_eps = get_normalization_factor(dbc_pnts, guide_pnts)
+    else:
+        std_u, std_eps = np.ones(2), np.ones(3)
+        
     std_eps = mat_model.get_strain_tensor_from_strain_vector(std_eps.reshape(1, -1)).squeeze()
     std_u = torch.tensor(std_u).float().to(device).requires_grad_(False)
     std_eps = torch.tensor(std_eps).float().to(device).requires_grad_(False)
@@ -131,11 +139,17 @@ def train_guided_mixed_disp_strain(
                 'pde_val':[], 'compat_val':[], 'lr':[]
     }
     calc_f_norm = lambda tens: tens.pow(2).sum([1, 2]).mean()
-    aux_scheduler_u = AuxilaryTaskScheduler(auxilary_task_params_u)
-    aux_scheduler_eps = AuxilaryTaskScheduler(auxilary_task_params_eps)
+    aux_scheduler_u = None
+    if auxilary_task_params_u:
+        aux_scheduler_u = AuxilaryTaskScheduler(auxilary_task_params_u)
+    aux_scheduler_eps = None
+    if auxilary_task_params_eps:
+        aux_scheduler_eps = AuxilaryTaskScheduler(auxilary_task_params_eps)
     for epoch in range(epochs):
-        weight_guide_u = aux_scheduler_u(curent_penalty=weight_guide_u, epoch=epoch)
-        weight_guide_eps = aux_scheduler_eps(curent_penalty=weight_guide_eps, epoch=epoch)
+        if aux_scheduler_u is not None:
+            weight_guide_u = aux_scheduler_u(curent_penalty=weight_guide_u, epoch=epoch)
+        if aux_scheduler_eps is not None:
+            weight_guide_eps = aux_scheduler_eps(curent_penalty=weight_guide_eps, epoch=epoch)
         optimizer.zero_grad()
         pde_res = torch.tensor(0.)
         compat_res = torch.tensor(0.)
@@ -169,7 +183,7 @@ def train_guided_mixed_disp_strain(
             eps_pde_pred_tens = mat_model.get_strain_tensor_from_strain_vector(eps_pde_pred_vec)
             eps_target_tens = mat_model.get_strain_tensor_from_strain_vector(guide_info.strain)
             eps_guide_res += calc_f_norm((eps_pde_pred_tens - eps_target_tens)/std_eps)
-        del guide_info
+        if guide_pnts_pt: del guide_info
         dbc_res = torch.tensor(0.)
         # dirichlet bc
         for dbc_info in dbc_pnts_pt:
@@ -198,7 +212,9 @@ def train_guided_mixed_disp_strain(
         if need_surgury:
             optimizer.backward_surgery(objectives)
         else:
-            optimizer.backward_regular(objectives, weights)
+            optimizer.backward_regular(
+                [o*w for o, w in zip(objectives, weights)]
+            )
         optimizer.step()
         with torch.no_grad():
             loss_tot = sum([obj.item()*w for obj, w in zip(objectives, weights)])

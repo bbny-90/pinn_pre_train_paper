@@ -2,9 +2,13 @@ from typing import Tuple
 import os
 import pathlib
 
+
+
 pjoin = os.path.join
 SCRIPT_DIR = os.path.abspath(pathlib.Path(__file__).parent.absolute())
 PROBLEM_SETUP_DIR = pjoin(SCRIPT_DIR, "data")
+
+
 PLANE_COND = "plane_strain"
 ELAST_MOD = 1.
 POISSON_RATIO = 0.3
@@ -24,7 +28,16 @@ PDE_SAMPLE_TYPE = 'uniform'
 import pandas as pd
 import numpy as np
 from pyDOE import lhs
+from helper.data_structures import (
+    InternalPoints,
+    DirichletPoints,
+    NeumannPoints,
+    InternalPointsSolidMixedForm
+)
+
 PI = np.pi
+
+
 
 class ExactSolution(object):
     def __init__(self):
@@ -113,75 +126,85 @@ class ExactSolution(object):
         sig = np.hstack((sxx, syy, sxy))
         return sig
 
-def sample_dirichlet_boundary(seg_size)->np.ndarray:
-    all_cords = []
+def sample_dirichlet_boundary(seg_size, d_type='uniform'):
+    all_pnts = []
     # bottom
     N = int((SQUARE_LENGTH-HOLE_RAD) // seg_size + 1)
-    if BOUNDARY_SAMPLE_TYPE == 'random':
+    if d_type == 'random':
         temp = np.random.uniform(HOLE_RAD, SQUARE_LENGTH, N)
-    elif BOUNDARY_SAMPLE_TYPE == 'uniform':
+    elif d_type == 'uniform':
         temp = np.linspace(HOLE_RAD, SQUARE_LENGTH, N)
     else:
         raise NotImplementedError()
-    cord = np.zeros((N, 2))
-    cord[:, 0] = temp
-    all_cords.append(cord)
+    xy_bc = np.zeros((N, 2))
+    xy_bc[:, 0] = temp
+    n = np.zeros((len(temp), 2))
+    n[:, 1] = -1.
+    all_pnts.append(DirichletPoints(xy_bc, np.zeros_like(xy_bc)))
     # right
     N = int(SQUARE_LENGTH // seg_size + 1)
-    if BOUNDARY_SAMPLE_TYPE == 'random':
+    if d_type == 'random':
         temp = np.random.uniform(0., SQUARE_LENGTH, N)
-    elif BOUNDARY_SAMPLE_TYPE == 'uniform':
+    elif d_type == 'uniform':
         temp = np.linspace(0., SQUARE_LENGTH, N)[1:]
     else:
         raise NotImplementedError()
-    cord = np.zeros((len(temp), 2))
-    cord[:, 0] = SQUARE_LENGTH
-    cord[:, 1] = temp
-    all_cords.append(cord)
+    xy_bc = np.zeros((len(temp), 2))
+    xy_bc[:, 0] = SQUARE_LENGTH
+    xy_bc[:, 1] = temp
+    n = np.zeros((len(temp), 2))
+    n[:, 0] = 1.
+    all_pnts.append(DirichletPoints(xy_bc, np.zeros_like(xy_bc)))
     # top
     N = int(SQUARE_LENGTH // seg_size + 1)
-    if BOUNDARY_SAMPLE_TYPE == 'random':
+    if d_type == 'random':
         temp = np.random.uniform(0., SQUARE_LENGTH, N)
-    elif BOUNDARY_SAMPLE_TYPE == 'uniform':
+    elif d_type == 'uniform':
         temp = np.linspace(SQUARE_LENGTH, 0., N)[1:]
     else:
         raise NotImplementedError()
-    cord = np.zeros((len(temp), 2))
-    cord[:, 0] = temp
-    cord[:, 1] = SQUARE_LENGTH
-    all_cords.append(cord)
+    xy_bc = np.zeros((len(temp), 2))
+    xy_bc[:, 0] = temp
+    xy_bc[:, 1] = SQUARE_LENGTH
+    n = np.zeros((len(temp), 2))
+    n[:, 1] = 1.
+    all_pnts.append(DirichletPoints(xy_bc, np.zeros_like(xy_bc)))
     # left
     N = int((SQUARE_LENGTH-HOLE_RAD) // seg_size + 1)
-    if BOUNDARY_SAMPLE_TYPE == 'random':
+    if d_type == 'random':
         temp = np.random.uniform(HOLE_RAD, SQUARE_LENGTH, N)
-    elif BOUNDARY_SAMPLE_TYPE == 'uniform':
+    elif d_type == 'uniform':
         temp = np.linspace(SQUARE_LENGTH, HOLE_RAD, N)[1:]
     else:
         raise NotImplementedError()
-    cord = np.zeros((len(temp), 2))
-    cord[:, 1] = temp
-    all_cords.append(cord)
-    all_cords = np.concatenate(all_cords, axis=0)
-    return all_cords
+    xy_bc = np.zeros((len(temp), 2))
+    xy_bc[:, 1] = temp
+    n = np.zeros((len(temp), 2))
+    n[:, 0] = -1.
+    all_pnts.append(DirichletPoints(xy_bc, np.zeros_like(xy_bc)))
+    return all_pnts
 
 
 
-def sample_neumann_boundary(seg_size)->Tuple[np.ndarray, np.ndarray]:
+def sample_neumann_boundary(seg_size, d_type='uniform')->Tuple[np.ndarray, np.ndarray]:
+    all_pnts = []
     # quarter of a circle
+    # circle
     N = int(np.pi*HOLE_RAD/2./seg_size +1)
-    if BOUNDARY_SAMPLE_TYPE == 'random':
+    if d_type == 'random':
         temp = np.random.uniform(0., np.pi/2, N)
-    elif BOUNDARY_SAMPLE_TYPE == 'uniform':
+    elif d_type == 'uniform':
         temp = np.linspace(0., np.pi/2, N)[1:-1]
     else:
         raise NotImplementedError()
-    cord = np.zeros((len(temp), 2))
-    cord[:, 0] = HOLE_RAD * np.cos(temp)
-    cord[:, 1] = HOLE_RAD * np.sin(temp)
-    normal = np.zeros((len(temp), 2))
-    normal[:, 0] = -np.cos(temp)
-    normal[:, 1] = -np.sin(temp)
-    return cord, normal
+    xy_bc = np.zeros((len(temp), 2))
+    xy_bc[:, 0] = HOLE_RAD * np.cos(temp)
+    xy_bc[:, 1] = HOLE_RAD * np.sin(temp)
+    n = np.zeros((len(temp), 2))
+    n[:, 0] = -np.cos(temp)
+    n[:, 1] = -np.sin(temp)
+    all_pnts.append(NeumannPoints(xy_bc, np.zeros_like(xy_bc), n))
+    return all_pnts
 
 
 def sample_pde_points(num_teta, num_rad, d_type='uniform'):
@@ -190,18 +213,19 @@ def sample_pde_points(num_teta, num_rad, d_type='uniform'):
         sin, cos = np.sin, np.cos
         col_pnts = []
         for i, tet in enumerate(tets):
-            pnts = np.linspace(0., SQUARE_LENGTH, num_rad)[1:-1].reshape(-1, 1)
+            pnts = np.linspace(0., 1., num_rad)[1:-1].reshape(-1, 1)
             pnts = np.hstack((pnts, np.zeros_like(pnts)))
 
             rot = np.array([[cos(tet), -sin(tet)], [sin(tet), cos(tet)]])
             l = SQUARE_LENGTH / cos(tet) - HOLE_RAD
             pnts = pnts @ rot.T * l
-            pnts[:, 0] += HOLE_RAD * cos(tet)
-            pnts[:, 1] += HOLE_RAD * sin(tet)
+            pnts[:, 0] += HOLE_RAD*cos(tet)
+            pnts[:, 1] += HOLE_RAD*sin(tet)
             col_pnts.append(pnts)
+        
         tets = np.linspace(PI/4., PI/2, num_teta)[1:]
         for i, tet in enumerate(tets):
-            pnts = np.linspace(0., SQUARE_LENGTH, num_rad)[1:-1].reshape(-1, 1)
+            pnts = np.linspace(0., 1., num_rad)[1:-1].reshape(-1, 1)
             pnts = np.hstack((pnts, np.zeros_like(pnts)))
 
             rot = np.array([[cos(tet), -sin(tet)], [sin(tet), cos(tet)]])
@@ -222,73 +246,30 @@ def sample_pde_points(num_teta, num_rad, d_type='uniform'):
         raise NotImplementedError()
     assert col_pnts.ndim == 2
     assert col_pnts.shape[1] == 2
-    return col_pnts
+    return [InternalPoints(col_pnts, np.zeros_like(col_pnts))]
 
-if __name__ == "__main__":
+
+
+def get_train_data_information():
     if not os.path.exists(PROBLEM_SETUP_DIR):
         os.makedirs(PROBLEM_SETUP_DIR)
     sol = ExactSolution()
     # train data
-    cord_pde_train = sample_pde_points(
+    pde_points = sample_pde_points(
         NUM_TETA_PDE_PNTS_TRAIN, NUM_RAD_PDE_PNTS_TRAIN, PDE_SAMPLE_TYPE
     )
-    u_pde_train = sol.get_u(cord_pde_train)
-    eps_pde_train = sol.get_eps(cord_pde_train)
-    cord_dbc_train = sample_dirichlet_boundary(BOUNDARY_SEG_SZ_TRAIN)
-    u_dbc_train = sol.get_u(cord_dbc_train)
-    cord_nbc_train, normal_nbc_train = sample_neumann_boundary(BOUNDARY_SEG_SZ_TRAIN)
-    trac_nbc_train = np.zeros_like(cord_nbc_train)
-    # validation data
-    cord_pde_valid = sample_pde_points(
-        NUM_TETA_PDE_PNTS_VALID, NUM_RAD_PDE_PNTS_VALID, PDE_SAMPLE_TYPE
-    )
-    u_pde_valid = sol.get_u(cord_pde_valid)
-    eps_pde_valid = sol.get_eps(cord_pde_valid)
-    cord_dbc_valid = sample_dirichlet_boundary(BOUNDARY_SEG_SZ_VALID)
-    u_dbc_valid = sol.get_u(cord_dbc_valid)
-    cord_nbc_valid, normal_nbc_valid = sample_neumann_boundary(BOUNDARY_SEG_SZ_VALID)
-    trac_nbc_valid = np.zeros_like(cord_nbc_valid)
-    # save the data
-    pd.DataFrame(
-        {'x0':cord_pde_train[:, 0], 'x1':cord_pde_train[:, 1],
-         'u0':u_pde_train[:, 0], 'u1':u_pde_train[:, 1],
-         'e00':eps_pde_train[:, 0], 'e11':eps_pde_train[:, 1],
-         'e01':eps_pde_train[:, 2],
-         'source0':np.zeros(eps_pde_train.shape[0]),
-         'source1':np.zeros(eps_pde_train.shape[0])
-        }
-    ).to_csv(pjoin(PROBLEM_SETUP_DIR, "pde_data_train.csv"), index=False)
-    pd.DataFrame(
-        {'x0':cord_dbc_train[:, 0], 'x1':cord_dbc_train[:, 1],
-         'u0':u_dbc_train[:, 0], 'u1':u_dbc_train[:, 1]
-        }
-    ).to_csv(pjoin(PROBLEM_SETUP_DIR, "dirichlet_bc_data_train.csv"), index=False)
-    pd.DataFrame(
-        {'x0':cord_nbc_train[:, 0], 'x1':cord_nbc_train[:, 1],
-         'n0':normal_nbc_train[:, 0], 'n1':normal_nbc_train[:, 1],
-         'trac0':trac_nbc_train[:, 0], 'trac1':trac_nbc_train[:, 1]
-        }
-    ).to_csv(pjoin(PROBLEM_SETUP_DIR, "neumann_bc_data_train.csv"), index=False)    
-
-
-
-    pd.DataFrame(
-        {'x0':cord_pde_valid[:, 0], 'x1':cord_pde_valid[:, 1],
-         'u0':u_pde_valid[:, 0], 'u1':u_pde_valid[:, 1],
-         'e00':eps_pde_valid[:, 0], 'e11':eps_pde_valid[:, 1],
-         'e01':eps_pde_valid[:, 2]
-        }
-    ).to_csv(pjoin(PROBLEM_SETUP_DIR, "pde_data_validation.csv"), index=False)
-
-    pd.DataFrame(
-        {'x0':cord_dbc_valid[:, 0], 'x1':cord_dbc_valid[:, 1],
-         'u0':u_dbc_valid[:, 0], 'u1':u_dbc_valid[:, 1]
-        }
-    ).to_csv(pjoin(PROBLEM_SETUP_DIR, "dirichlet_bc_data_validation.csv"), index=False)
-
-    pd.DataFrame(
-        {'x0':cord_nbc_valid[:, 0], 'x1':cord_nbc_valid[:, 1],
-         'n0':normal_nbc_valid[:, 0], 'n1':normal_nbc_valid[:, 1],
-         'trac0':trac_nbc_valid[:, 0], 'trac1':trac_nbc_valid[:, 1]
-        }
-    ).to_csv(pjoin(PROBLEM_SETUP_DIR, "neumann_bc_data_validation.csv"), index=False)
+    dbc_points = sample_dirichlet_boundary(BOUNDARY_SEG_SZ_TRAIN)
+    for i in range(len(dbc_points)):
+        dbc_points[i].val = sol.get_u(dbc_points[i].x)
+    nbc_points = sample_neumann_boundary(BOUNDARY_SEG_SZ_TRAIN)
+    # fem data
+    fem_df = pd.read_csv(pjoin(PROBLEM_SETUP_DIR, "results_fem_quad_N68.csv"))
+    guide_pnts = [
+        InternalPointsSolidMixedForm(
+            fem_df[['x0', 'x1']].to_numpy(),
+            np.zeros((len(fem_df), 2)),
+            fem_df[['u0', 'u1']].to_numpy(),
+            fem_df[['e00', 'e11', 'e01']].to_numpy(),
+        )
+    ]
+    return pde_points, dbc_points, nbc_points, guide_pnts
