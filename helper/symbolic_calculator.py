@@ -18,8 +18,19 @@ class EvalNp():
             out = out * np.ones((ndata, self.u_dim))
         return out
 
-def get_laplacian(u:Expr, x:List[Symbol])->Expr:
-    lap = 0.
+def get_gradient_scalar(u:Expr, x:List[Symbol])->List[Expr]:
+    grad = []
     for xi in x:
-        lap += sp.diff(sp.diff(u, xi), xi)
-    return lap
+        grad.append(sp.diff(u, xi))
+    return grad
+
+def get_divergence_vector(u:List[Expr], x:List[Symbol])->Expr:
+    assert len(u) == len(x)
+    div = 0.
+    for ui, xi in zip(u, x):
+        div += sp.diff(ui, xi)
+    return div
+
+def get_laplacian(u:Expr, x:List[Symbol])->Expr:
+    grad = get_gradient_scalar(u, x)
+    return get_divergence_vector(grad)
