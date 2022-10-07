@@ -2,7 +2,7 @@ from typing import Dict, Optional
 import numpy as np
 import torch
 from models.nueral_net_pt import MLP
-from pdes.operators import get_divergence_vector, get_grad_scalar
+from pdes.operators import get_divergence_vector
 from trainer.gradient_surgery import PCGrad
 
 def train(
@@ -71,21 +71,18 @@ def train(
         # optimizer.zero_grad()
         base_optimizer.zero_grad()
         perm = solution.get_perm()
-        print(perm)
         u_pde_pred = solution(x_pde_pt)
         u_dbc_pred = solution(x_dbc_pt)
         u_guide_pred = solution(x_guide_pt)
         # pde
-        flux_guide_pde = get_grad_scalar(u_pde_pred, x_pde_pt, device=device)
-        flux_guide_pred = - torch.matmul(perm, flux_guide_pde.unsqueeze(-1)).squeeze()
+        flux_guide_pred = solution.calc_flux(u=u_pde_pred, x=x_pde_pt, perm=perm, device=device)
         pde_res = (get_divergence_vector(flux_guide_pred, x_pde_pt) - source_pde_pt).pow(2).mean()
         # dbc
         dbc_res = (u_dbc_pred - u_dbc_pt).pow(2).mean()
         # exp u
         guide_u_res = (u_guide_pred - u_guide_pt).pow(2).mean() * weights_init['guide_u']
         # exp flux
-        flux_guide_pred = get_grad_scalar(u_guide_pred, x_guide_pt, device=device)
-        flux_guide_pred = - torch.matmul(perm, flux_guide_pred.unsqueeze(-1)).squeeze()
+        flux_guide_pred = solution.calc_flux(u=u_guide_pred, x=x_guide_pt, perm=perm, device=device)
         guide_q0_res = (flux_guide_pred[:, 0] - flux_guide_pt[:, 0]).pow(2).mean() * weights_init['guide_q0']
         guide_q1_res = (flux_guide_pred[:, 1] - flux_guide_pt[:, 1]).pow(2).mean() * weights_init['guide_q1']
         # pos def perm

@@ -3,7 +3,7 @@ MLPTEACHER:
   min_lr: 1.e-6
   lr_patience: 50
   lr_red_factoe: 0.9
-  epochs: 5000
+  epochs: 50
   lr_sch_epoch: 2000
   need_surgury: True
   weight_pde: 1.

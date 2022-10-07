@@ -38,7 +38,7 @@ from helper.data_structures import (
 PI = np.pi
 
 
-
+# TODO: make it tensorial and general
 class ExactSolution(object):
     def __init__(self):
         import sympy as sp 
