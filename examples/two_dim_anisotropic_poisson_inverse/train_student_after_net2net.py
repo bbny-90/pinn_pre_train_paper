@@ -19,7 +19,7 @@ from examples.two_dim_anisotropic_poisson_inverse.model import MLPSCALED
 
 from examples.two_dim_anisotropic_poisson_inverse.train_teacher import OUT_DIR as TEACHER_DIR
 NETWORK_NAME = "MLPTEACHER"
-TRAIN_NAME = "MLPTEACHER"
+TRAIN_NAME = "MLPSTUDENT"
 PROBLEM_DATA_DIR = pjoin(SCRIPT_DIR, "data/")
 STUDENT_DIR = pjoin(SCRIPT_DIR, ".tmp/student/")
 
@@ -102,7 +102,7 @@ def read_and_train(random_seed = None):
         u_pred = sol_student(torch.from_numpy(sol_after_train_df[['x0', 'x1']].to_numpy()).float()).numpy().flatten()
         rel_err_u = np.abs(u_pred - sol_after_train_df['u'].to_numpy()) / (sol_after_train_df['u'].to_numpy() + 1e-5)
         rel_err_u = rel_err_u.mean()
-        assert rel_err_u < 1e-5, rel_err_u
+        assert rel_err_u < 1e-4, rel_err_u
 
     dbc_data_df = pd.read_csv(pjoin(PROBLEM_DATA_DIR, "dbc_data.csv"))
     pde_data_df = pd.read_csv(pjoin(PROBLEM_DATA_DIR, "pde_data.csv"))
@@ -114,7 +114,7 @@ def read_and_train(random_seed = None):
     u_stats = {'mean':data_u.mean(axis=0), 'std':data_u.std(axis=0)}
     
     # train
-    loss_rec = train(
+    loss_rec, discovered_perm = train(
         solution=sol_student,
         x_pde = pde_data_df[['x0', 'x1']].to_numpy(),
         source_pde = pde_data_df['source'].to_numpy().reshape(-1, 1),
@@ -128,6 +128,9 @@ def read_and_train(random_seed = None):
     )
     pd.DataFrame(loss_rec).to_csv(
         pjoin(STUDENT_DIR, f'loss_train_{random_seed}.csv'), index=False
+    )
+    pd.DataFrame(discovered_perm).to_csv(
+        pjoin(STUDENT_DIR, f'perm_history_{random_seed}.csv'), index=False, header=False,
     )
     sol_student.save(
     dir_to_save=STUDENT_DIR,

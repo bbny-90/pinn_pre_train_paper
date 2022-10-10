@@ -128,11 +128,11 @@ def plot_student(x:np.ndarray, Nx:int, Ny:int, net_id:int)->None:
 
     resh = lambda w: w.reshape(Nx, Ny)
     contour(resh(x[:,0]), resh(x[:,1]), resh(u), 
-        title=None, dir_save=STUDENT_DIR, name_save=f"u_pred_tech_{net_id}")
+        title=None, dir_save=STUDENT_DIR, name_save=f"u_pred_student_{net_id}")
     contour(resh(x[:,0]), resh(x[:,1]), resh(q[:, 0]), 
-        title=None, dir_save=STUDENT_DIR, name_save=f"qx_pred_tech_{net_id}")
+        title=None, dir_save=STUDENT_DIR, name_save=f"qx_pred_student_{net_id}")
     contour(resh(x[:,0]), resh(x[:,1]), resh(q[:, 1]), 
-        title=None, dir_save=STUDENT_DIR, name_save=f"qy_pred_tech_{net_id}")
+        title=None, dir_save=STUDENT_DIR, name_save=f"qy_pred_student_{net_id}")
     return u, q
 
 
@@ -187,6 +187,22 @@ def plot_loss_relative_zoomin(
     # plt.show()
     plt.close()
 
+def plot_perm(file_add:str):
+    data = pd.read_csv(file_add, header=None).to_numpy()
+    labels = [r'$k_11$', r'$k_22$', r'$k_12$']
+    for i, col in enumerate([0, 3, 1]):
+        plt.plot(data[:, col], label=labels[i])
+    plt.axhline(y=1., color='k', linestyle='--', linewidth=2)
+    plt.axhline(y=2., color='k', linestyle='--', linewidth=2)
+    plt.tight_layout()
+    plt.legend()
+    tmp = file_add.split("/")
+    tmp[-1] = tmp[-1][:-3] + 'png'
+    tmp = '/'.join(tmp)
+    plt.savefig(tmp)
+    plt.close()
+
+
 if __name__ == "__main__":
     Nx_tst, Ny_tst = 50, 50
     with open(pjoin(SCRIPT_DIR, "configs/train.yaml")) as f:
@@ -198,9 +214,17 @@ if __name__ == "__main__":
 
     x_test = create_test_data(Nx_tst, Ny_tst)
     u_exact, q_exact = plot_exact_solution(x_test, Nx_tst, Ny_tst)
-    u_tech, q_teach = plot_teacher(x_test,Nx_tst, Ny_tst, 1)
+    u_teach, q_teach = plot_teacher(x_test,Nx_tst, Ny_tst, 1)
     u_st, q_st = plot_student(x_test, Nx_tst, Ny_tst, 0)
     resh = lambda w: w.reshape(Nx_tst, Ny_tst)
+
+    contour(resh(x_test[:,0]), resh(x_test[:,1]), resh(u_exact-u_teach), 
+        title=None, dir_save=TEACHER_DIR, name_save="u_err")
+    contour(resh(x_test[:,0]), resh(x_test[:,1]), resh(q_exact[:,0]-q_teach[:, 0]),
+        title=None, dir_save=TEACHER_DIR, name_save="qx_err")
+    contour(resh(x_test[:,0]), resh(x_test[:,1]), resh(q_exact[:,1]-q_teach[:, 1]),
+        title=None, dir_save=TEACHER_DIR, name_save="qy_err")
+
     contour(resh(x_test[:,0]), resh(x_test[:,1]), resh(u_exact-u_st), 
         title=None, dir_save=STUDENT_DIR, name_save="u_err")
     contour(resh(x_test[:,0]), resh(x_test[:,1]), resh(q_exact[:,0]-q_st[:, 0]),
@@ -214,3 +238,8 @@ if __name__ == "__main__":
     plot_loss_relative(student_loss_df, best_teacher_loss_df,
         pjoin(STUDENT_DIR, f"loss_train_relative.png")
     )
+    
+    add_perm_teach = pjoin(TEACHER_DIR, f"perm_history_{teacher_id}.csv")
+    plot_perm(add_perm_teach)
+    add_perm_st = pjoin(STUDENT_DIR, f"perm_history_{0}.csv")
+    plot_perm(add_perm_st)

@@ -3,7 +3,23 @@ MLPTEACHER:
   min_lr: 1.e-6
   lr_patience: 50
   lr_red_factoe: 0.9
-  epochs: 50
+  epochs: 5000
+  lr_sch_epoch: 2000
+  need_surgury: True
+  weight_pde: 1.
+  weight_dbc: 1.
+  weight_guide_u: 1.
+  weight_guide_flux0: 1.
+  weight_guide_flux1: 1.
+  weight_pos_def_perm: 1.
+  tol_pos_def: 0.01
+
+MLPSTUDENT:
+  lr: 0.0001
+  min_lr: 1.e-7
+  lr_patience: 50
+  lr_red_factoe: 0.9
+  epochs: 15000
   lr_sch_epoch: 2000
   need_surgury: True
   weight_pde: 1.

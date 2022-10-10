@@ -34,7 +34,7 @@ def read_and_train(random_seed = None):
     pde_data_df = pd.read_csv(pjoin(PROBLEM_DATA_DIR, "pde_data.csv"))
     exp_data_df = pd.read_csv(pjoin(PROBLEM_DATA_DIR, "exp_data.csv"))
     
-    data_x = dbc_data_df[['x0', 'x1']].to_numpy()
+    data_x = pde_data_df[['x0', 'x1']].to_numpy()
     x_stats = {'mean':data_x.mean(axis=0), 'std':data_x.std(axis=0)}
     data_u = np.concatenate([exp_data_df.u.to_numpy(), dbc_data_df.u.to_numpy()])
     u_stats = {'mean':data_u.mean(axis=0), 'std':data_u.std(axis=0)}
@@ -50,7 +50,7 @@ def read_and_train(random_seed = None):
     tmp_params['u_stats'] = u_stats
     sol = MLPSCALED(**tmp_params)
     # train
-    loss_rec = train(
+    loss_rec, discovered_perm = train(
         solution=sol,
         x_pde = pde_data_df[['x0', 'x1']].to_numpy(),
         source_pde = pde_data_df['source'].to_numpy().reshape(-1, 1),
@@ -64,6 +64,9 @@ def read_and_train(random_seed = None):
     )
     pd.DataFrame(loss_rec).to_csv(
         pjoin(OUT_DIR, f'loss_train_{random_seed}.csv'), index=False
+    )
+    pd.DataFrame(discovered_perm).to_csv(
+        pjoin(OUT_DIR, f'perm_history_{random_seed}.csv'), index=False, header=False,
     )
     sol.save(
         dir_to_save=OUT_DIR,

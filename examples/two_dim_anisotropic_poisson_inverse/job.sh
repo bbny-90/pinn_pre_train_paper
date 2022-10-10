@@ -3,7 +3,7 @@ PPATH=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 
 # python "$PPATH/problem_setup.py"
 
-for i in {0..10}
+for i in {0..19}
 do
     python "$PPATH/train_teacher.py" "$i"
 done

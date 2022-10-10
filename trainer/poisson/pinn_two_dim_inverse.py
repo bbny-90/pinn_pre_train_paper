@@ -67,6 +67,7 @@ def train(
                 'pos_def_perm':weight_pos_def_perm,}
     tmp = sum(weights_init.values())
     weights_init = {k:v/tmp for k, v in weights_init.items()}
+    discovered_perm = []
     for epoch in range(epochs):
         # optimizer.zero_grad()
         base_optimizer.zero_grad()
@@ -76,7 +77,8 @@ def train(
         u_guide_pred = solution(x_guide_pt)
         # pde
         flux_guide_pred = solution.calc_flux(u=u_pde_pred, x=x_pde_pt, perm=perm, device=device)
-        pde_res = (get_divergence_vector(flux_guide_pred, x_pde_pt) - source_pde_pt).pow(2).mean()
+        pde_res = (get_divergence_vector(flux_guide_pred, x_pde_pt) - source_pde_pt).pow(2).mean() * weights_init['pde']
+
         # dbc
         dbc_res = (u_dbc_pred - u_dbc_pt).pow(2).mean()
         # exp u
@@ -86,7 +88,7 @@ def train(
         guide_q0_res = (flux_guide_pred[:, 0] - flux_guide_pt[:, 0]).pow(2).mean() * weights_init['guide_q0']
         guide_q1_res = (flux_guide_pred[:, 1] - flux_guide_pt[:, 1]).pow(2).mean() * weights_init['guide_q1']
         # pos def perm
-        pos_def_perm_res = torch.relu(- torch.det(perm) + tol_pos_def)
+        pos_def_perm_res = torch.relu(- torch.det(perm) + tol_pos_def) * weights_init['pos_def_perm']
         #
         objectives = [pde_res, dbc_res, guide_u_res, guide_q0_res, guide_q1_res, pos_def_perm_res]
         if need_surgury:
@@ -126,4 +128,9 @@ def train(
         loss_rec['pos_def_perm'].append(pos_def_perm_res.item())
         loss_rec['val'].append(val)
         loss_rec['lr'].append(optimizer._optim.param_groups[0]['lr'])
-    return loss_rec
+        with torch.no_grad():
+            discovered_perm.append(
+                perm.detach().numpy().flatten()
+            )
+    discovered_perm = np.stack(discovered_perm, axis=0)
+    return loss_rec, discovered_perm
