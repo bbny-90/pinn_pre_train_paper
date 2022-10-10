@@ -139,16 +139,19 @@ def plot_student(x:np.ndarray, Nx:int, Ny:int, net_id:int)->None:
 def plot_loss(
     data_df:pd.DataFrame, 
     save_address: str,
+    **others
     ):
     plt.rcParams["figure.figsize"] = (8,7)
     for k, v in TRAIN_TERMS_FOR_PLOT.items():
         plt.plot(data_df[k].to_numpy(), label=v)
     plt.yscale('log')
     plt.xlabel('epoch'); plt.ylabel('MSE')
+    if 'ylim' in others:
+        plt.ylim(others['ylim'])
     plt.legend()
     plt.tight_layout()
     plt.savefig(save_address)
-    # plt.show()
+    plt.show()
     plt.close()
 
 def plot_loss_relative(
@@ -214,7 +217,7 @@ if __name__ == "__main__":
 
     x_test = create_test_data(Nx_tst, Ny_tst)
     u_exact, q_exact = plot_exact_solution(x_test, Nx_tst, Ny_tst)
-    u_teach, q_teach = plot_teacher(x_test,Nx_tst, Ny_tst, 1)
+    u_teach, q_teach = plot_teacher(x_test,Nx_tst, Ny_tst, teacher_id)
     u_st, q_st = plot_student(x_test, Nx_tst, Ny_tst, 0)
     resh = lambda w: w.reshape(Nx_tst, Ny_tst)
 
@@ -233,8 +236,13 @@ if __name__ == "__main__":
         title=None, dir_save=STUDENT_DIR, name_save="qy_err")
     
     best_teacher_loss_df = pd.read_csv(pjoin(TEACHER_DIR, f"loss_train_{teacher_id}.csv"))
-    plot_loss(best_teacher_loss_df, pjoin(TEACHER_DIR, f"loss_train_{teacher_id}.png"))
+    plot_loss(best_teacher_loss_df, pjoin(TEACHER_DIR, f"loss_train_{teacher_id}.png"), 
+        **{"ylim":[1e-7, 100]}
+    )
     student_loss_df = pd.read_csv(pjoin(STUDENT_DIR, f"loss_train_0.csv"))
+    plot_loss(student_loss_df, pjoin(STUDENT_DIR, f"loss_train_{0}.png"),
+        **{"ylim":[1e-7, 100]}
+    )
     plot_loss_relative(student_loss_df, best_teacher_loss_df,
         pjoin(STUDENT_DIR, f"loss_train_relative.png")
     )
