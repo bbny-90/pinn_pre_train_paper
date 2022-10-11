@@ -106,11 +106,10 @@ class ExactSolution(object):
             exy = exy * np.ones_like(y)
         return np.hstack((exx, eyy, exy))
 
-    def get_sig(self, x, y):
-        assert x.ndim == 2
-        assert y.ndim == 2
-        assert x.shape[1] == 1
-        assert y.shape[1] == 1
+    def get_sig(self, cord:np.ndarray) -> np.ndarray:
+        assert cord.ndim == 2
+        assert cord.shape[1] == 2
+        x, y = cord[:, 0:1], cord[:, 1:2]
         sxx = self.sxx(x, y)
         if isinstance(sxx, int) or isinstance(sxx, float):
             print(20*"!")

@@ -1,6 +1,7 @@
 import os
 import sys
 import pathlib
+import random
 pjoin = os.path.join
 SCRIPT_DIR = os.path.abspath(pathlib.Path(__file__).parent.absolute())
 
@@ -23,56 +24,21 @@ from examples.two_dim_biharmonic.model import MLPSCALED
 NETWORK_NAME = "MLP2DBYHARMONIC"
 TRAIN_NAME = "MLP2DBYHARMONICGUIDED"
 problem_data_dir = pjoin(SCRIPT_DIR, "data/")
-out_dir = pjoin(SCRIPT_DIR, ".tmp/fem_guided_pinn_pcgrad/")
-
-
-def plot_points(pde_points, guide_pnts, dbc_points, nbc_points):
-    import matplotlib.pyplot as plt
-    fig = plt.figure(figsize=(6, 6))
-    ax = fig.add_subplot(111)
-    pnts_all = []
-    for pnts in pde_points:
-        pnts_all.append(pnts.x)
-    pnts_all = np.concatenate(pnts_all)
-    plt.plot(pnts_all[:, 0], pnts_all[:, 1], '.', label='col')
-
-    pnts_all = []
-    for pnts in guide_pnts:
-        pnts_all.append(pnts.x)
-    pnts_all = np.concatenate(pnts_all)
-    plt.plot(pnts_all[:, 0], pnts_all[:, 1], '.', label='fem')
-
-    pnts_all = []
-    for pnts in dbc_points:
-        pnts_all.append(pnts.x)
-    pnts_all = np.concatenate(pnts_all)
-    plt.plot(pnts_all[:,0], pnts_all[:,1], 's', label='dbc')
-
-    pnts_all = []
-    for pnts in nbc_points:
-        pnts_all.append(pnts.x)
-    pnts_all = np.concatenate(pnts_all)
-    plt.plot(pnts_all[:, 0], pnts_all[:, 1], 's', label='nbc')
-    ax.set_aspect('equal', adjustable='box')
-    plt.legend()
-    plt.tight_layout()
-    # plt.savefig(root_folder + "domain.png")
-    plt.show()
+OUT_DIR = pjoin(SCRIPT_DIR, ".tmp/fem_guided_pinn_pcgrad/")
 
 def read_and_train(random_seed = None):
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+    if not os.path.exists(OUT_DIR):
+        os.makedirs(OUT_DIR)
     if random_seed is not None:
+        random.seed(random_seed)
+        np.random.seed(random_seed)
         torch.manual_seed(random_seed)
     else:
         random_seed = "rand"
     pde_points, dbc_points, nbc_points, guide_pnts = get_train_data_information()
-    if 1:
-        plot_points(pde_points, guide_pnts, dbc_points, nbc_points)
     data_u = [i.disp for i in guide_pnts] + [i.val for i in dbc_points]
     data_u = np.concatenate(data_u)
-    data_x = [i.x for i in guide_pnts] + [i.x for i in dbc_points]+\
-            [i.x for i in pde_points] + [i.x for i in nbc_points]
+    data_x = [i.x for i in pde_points] + [i.x for i in guide_pnts]
     data_x = np.concatenate(data_x)
     data_eps = np.concatenate([i.strain for i in guide_pnts])
     
@@ -109,10 +75,10 @@ def read_and_train(random_seed = None):
     )
 
     pd.DataFrame(loss_rec).to_csv(
-        pjoin(out_dir, f'loss_train_{random_seed}.csv'), index=False
+        pjoin(OUT_DIR, f'loss_train_{random_seed}.csv'), index=False
     )
     sol.save(
-        dir_to_save=out_dir,
+        dir_to_save=OUT_DIR,
         model_info_name=f"network_metadata_{random_seed}",
         weight_name=f"net_weight_{random_seed}.pt"
     )

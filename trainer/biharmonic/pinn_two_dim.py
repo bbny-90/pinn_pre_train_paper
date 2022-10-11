@@ -1,3 +1,4 @@
+from turtle import pd
 from typing import Dict, List, Optional, Tuple
 import numpy as np
 import torch
@@ -119,6 +120,7 @@ def train_guided_mixed_disp_strain(
             min_lr=min_lr, verbose=False
     )
     optimizer = PCGrad(base_optimizer, lr_scheduler=lr_scheduler)
+    # optimizer = base_optimizer
     #
     if guide_pnts:
         std_u, std_eps = get_normalization_factor(dbc_pnts, guide_pnts)
@@ -139,6 +141,10 @@ def train_guided_mixed_disp_strain(
                 'pde_val':[], 'compat_val':[], 'lr':[]
     }
     calc_f_norm = lambda tens: tens.pow(2).sum([1, 2]).mean()
+    # def calc_norm_tmp(tens):
+    #     tmp = tens[:, 0, 0].pow(2) + tens[:, 1, 1].pow(2) + tens[:, 0, 1].pow(2)
+    #     return tmp.mean()
+
     aux_scheduler_u = None
     if auxilary_task_params_u:
         aux_scheduler_u = AuxilaryTaskScheduler(auxilary_task_params_u)
@@ -153,6 +159,16 @@ def train_guided_mixed_disp_strain(
         optimizer.zero_grad()
         pde_res = torch.tensor(0.)
         compat_res = torch.tensor(0.)
+
+        def get_eps_err1(u, x, eps_vec):
+            eps_ten_ = get_gradient_vector(u, x)
+            tmp = (eps_ten_[:, 0, 1] + eps_ten_[:, 1, 0]) * 0.5
+            eps_ten_[:, 0, 1] = tmp
+            eps_ten_[:, 1, 0] = tmp
+            eps_ten = mat_model.get_strain_tensor_from_strain_vector(eps_vec)
+            err = calc_f_norm((eps_ten - eps_ten_))
+            return err
+
         for pde_info in pde_pnts_pt:
             u_pde_pred_vec, eps_pde_pred_vec = solution(pde_info.x)
             # pde constraint
@@ -161,9 +177,7 @@ def train_guided_mixed_disp_strain(
             div_sig = get_divergence_tensor(sig_pde_pred_tens, pde_info.x, device)
             pde_res += (div_sig - pde_info.source).pow(2).sum(dim=1).mean()
             # compatibility constraint
-            eps_from_u_pde = get_gradient_vector(u_pde_pred_vec, pde_info.x)
-            eps_pde_pred_tens = mat_model.get_strain_tensor_from_strain_vector(eps_pde_pred_vec)
-            compat_res += calc_f_norm((eps_from_u_pde - eps_pde_pred_tens))
+            compat_res += get_eps_err1(u_pde_pred_vec, pde_info.x, eps_pde_pred_vec)
         del pde_info
         u_guide_res, eps_guide_res = torch.tensor(0.), torch.tensor(0.)
         for guide_info in guide_pnts_pt:
@@ -174,9 +188,8 @@ def train_guided_mixed_disp_strain(
             div_sig = get_divergence_tensor(sig_pde_pred_tens, guide_info.x, device)
             pde_res += (div_sig - guide_info.source).pow(2).sum(dim=1).mean()
             # compatibility constraint
-            eps_from_u_pde = get_gradient_vector(u_pde_pred_vec, guide_info.x)
-            eps_pde_pred_tens = mat_model.get_strain_tensor_from_strain_vector(eps_pde_pred_vec)
-            compat_res += calc_f_norm((eps_from_u_pde - eps_pde_pred_tens))
+            compat_res += get_eps_err1(u_pde_pred_vec, guide_info.x, eps_pde_pred_vec)
+                
             # displacement constraint  
             u_guide_res += ((u_pde_pred_vec - guide_info.disp)/std_u).pow(2).sum(dim=1).mean()
             # strain constraint
@@ -209,6 +222,8 @@ def train_guided_mixed_disp_strain(
         if weight_guide_eps > 1e-6:
             objectives.append(eps_guide_res)
             weights.append(weight_guide_eps)
+        
+        # pde_res.backward()
         if need_surgury:
             optimizer.backward_surgery(objectives)
         else:
