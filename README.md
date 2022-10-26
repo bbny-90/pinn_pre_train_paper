@@ -1,4 +1,4 @@
-implementation (NOT COMPLETED) of the following paper
+implementation of
 https://arxiv.org/abs/2107.11496
 
 other refrences:
